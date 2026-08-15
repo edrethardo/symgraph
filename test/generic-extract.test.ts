@@ -99,6 +99,13 @@ const SNIPPETS: Array<{ lang: string; file: string; src: string; defs: string[];
   // (extract.ts), so `.c` never reaches extractGeneric. The include-resolution
   // guarantee that used to be proven here is proven against the depth
   // extractor below.
+  {
+    // Lisp: every form is a bare list_lit, so definitions are matched by the
+    // head symbol's name (`defn`, `ns`, …), not a dedicated grammar node.
+    lang: "clojure", file: "a.clj",
+    src: `(ns my.core)\n\n(defn helper [] 1)\n\n(defn run [] (helper))\n`,
+    defs: ["function:helper", "function:run", "module:my.core"], call: ["run", "helper"],
+  },
 ];
 
 for (const s of SNIPPETS) {
