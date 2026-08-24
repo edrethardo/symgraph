@@ -32,6 +32,7 @@ const INDEXED = [
   "a.cpp", "a.cc", "a.cxx",
   "a.hpp", "a.hh", "a.hxx",
   "a.sh", "a.bash",
+  "a.kt", "a.kts",
   "a.php",
 ];
 
@@ -67,6 +68,8 @@ test("labels name the language, not the grammar that parses it", () => {
   assert.equal(languageLabelOf("vendor/util.c"), "c/c++");
   assert.equal(languageLabelOf("tools/deploy.sh"), "shell");
   assert.equal(languageLabelOf("tools/env.bash"), "shell");
+  assert.equal(languageLabelOf("src/main/kotlin/com/acme/App.kt"), "kotlin");
+  assert.equal(languageLabelOf("scripts/main.kts"), "kotlin");
   assert.equal(languageLabelOf("app/Models/User.php"), "php");
 
   // The grammar is unchanged — extraction, the extract cache and every `Language`
@@ -90,9 +93,10 @@ test("the build banner and repo map report every language they indexed", async (
   writeFileSync(join(d, "scripts", "tool.mjs"), "export function mjsOnlySymbol() {\n  return 1;\n}\n");
   writeFileSync(join(d, "scripts", "web.jsx"), "export function JsxOnly() {\n  return null;\n}\n");
   writeFileSync(join(d, "src", "c.py"), "def py_only():\n    return 1\n");
+  writeFileSync(join(d, "src", "a.kt"), "fun ktOnly(): Int {\n  return 1\n}\n");
 
   const r = await buildGraph(d);
-  assert.deepEqual(r.languages, ["javascript", "jsx", "python", "tsx", "typescript"]);
+  assert.deepEqual(r.languages, ["javascript", "jsx", "kotlin", "python", "tsx", "typescript"]);
 
   // The reported symbol was queryable all along — that mismatch is what the issue was
   // about, so pin both halves together.

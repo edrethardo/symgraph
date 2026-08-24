@@ -11,6 +11,7 @@ import TypeScript from "tree-sitter-typescript";
 import Python from "tree-sitter-python";
 import Go from "tree-sitter-go";
 import Java from "tree-sitter-java";
+import Kotlin from "tree-sitter-kotlin";
 import Cpp from "tree-sitter-cpp";
 import Bash from "tree-sitter-bash";
 import PHP from "tree-sitter-php";
@@ -19,7 +20,7 @@ import { contentHash } from "../util/id.js";
 import { collectBindings, cppDeclaratorName, goReceiverVarOf, resolveRecvType, type FileBindings } from "./bindings.js";
 import type { Kind, NodeV1, Relation } from "./types.js";
 
-export type Language = "typescript" | "tsx" | "python" | "go" | "java" | "cpp" | "bash" | "php";
+export type Language = "typescript" | "tsx" | "python" | "go" | "java" | "kotlin" | "cpp" | "bash" | "php";
 
 /**
  * How much edge data a language's extraction can honestly claim (issue #66/#68).
@@ -66,6 +67,8 @@ const EXTENSIONS: ReadonlyArray<{ ext: string; grammar: Language; label: string 
   { ext: ".py", grammar: "python", label: "python" },
   { ext: ".go", grammar: "go", label: "go" },
   { ext: ".java", grammar: "java", label: "java" },
+  { ext: ".kt", grammar: "kotlin", label: "kotlin" },
+  { ext: ".kts", grammar: "kotlin", label: "kotlin" },
   // One grammar and one label for the whole C family: the cpp grammar parses C,
   // and `.h` can't be attributed to either language from its name alone, so a
   // split label would misreport every C repo's headers (or every C++ one's).
@@ -222,6 +225,20 @@ const BASH_KINDS: Record<string, Kind> = {
   function_definition: "function",
 };
 
+const KOTLIN_KINDS: Record<string, Kind> = {
+  class_declaration: "class", // → "interface" / "enum" / "interface" (annotation) in describeKotlin
+  object_declaration: "class", // a singleton object is class-like (companion objects included)
+  function_declaration: "function", // → "method" inside a type (resolved in the walk)
+  secondary_constructor: "method", // the class's own secondary constructor
+  type_alias: "type",
+  property_declaration: "variable", // top-level `val`/`var` only (fields resolved in the walk)
+};
+
+/** Kotlin type declarations: they set `enclosingClass` for the members nested in them.
+ * "class" also covers object_declaration (it maps to "class"); interface/enum are the
+ * same class_declaration node rekinded in describeKotlin, so all three land in the set. */
+const KOTLIN_TYPE_KINDS: ReadonlySet<Kind> = new Set<Kind>(["class", "interface", "enum"]);
+
 // PHP: definition node types are all distinct (no py-style function→method
 // promotion needed — a class body uses `method_declaration`, not
 // `function_definition`). `trait_declaration` maps to the PHP-only `trait` kind.
@@ -234,13 +251,13 @@ const PHP_KINDS: Record<string, Kind> = {
   enum_declaration: "enum",
 };
 
-
 const KINDS_BY_LANG: Record<Language, Record<string, Kind>> = {
   typescript: TS_KINDS,
   tsx: TS_KINDS,
   python: PY_KINDS,
   go: GO_KINDS,
   java: JAVA_KINDS,
+  kotlin: KOTLIN_KINDS,
   cpp: CPP_KINDS,
   bash: BASH_KINDS,
   php: PHP_KINDS,
@@ -261,6 +278,7 @@ const CALL_TYPES: Record<Language, ReadonlySet<string>> = {
   python: new Set(["call"]),
   go: new Set(["call_expression"]),
   java: new Set(["method_invocation", "object_creation_expression"]),
+  kotlin: new Set(["call_expression"]),
   cpp: new Set(["call_expression"]),
   bash: new Set(["command"]),
   php: new Set([
@@ -285,6 +303,7 @@ const GRAMMARS: Record<Language, unknown> = {
   python: Python,
   go: Go,
   java: Java,
+  kotlin: Kotlin,
   cpp: Cpp,
   bash: Bash,
   php: PHP.php,
@@ -535,11 +554,13 @@ function walk(node: Parser.SyntaxNode, ctx: WalkCtx, out: NodeV1[], edges: RawEd
             ? goExported(desc.name)
             : ctx.lang === "java"
               ? javaExported(node)
-              : ctx.lang === "cpp" || ctx.lang === "bash"
-                ? true // no module/visibility system at Tier-1
-                : ctx.lang === "php"
-                  ? phpExported(node)
-                  : tsExported(node),
+              : ctx.lang === "kotlin"
+                ? kotlinExported(node)
+                : ctx.lang === "cpp" || ctx.lang === "bash"
+                  ? true // no module/visibility system at Tier-1
+                  : ctx.lang === "php"
+                    ? phpExported(node)
+                    : tsExported(node),
       origin: "ast",
       body_hash: contentHash(desc.hashNode.text),
       body_text: searchBody(desc.hashNode.text),
@@ -557,7 +578,8 @@ function walk(node: Parser.SyntaxNode, ctx: WalkCtx, out: NodeV1[], edges: RawEd
     // may `implements`, so every type declaration is a heritage site, not just a
     // class; in C++ a struct inherits too (it is a default-public class).
     const javaTypeDecl = ctx.lang === "java" && JAVA_TYPE_KINDS.has(desc.kind);
-    if (desc.kind === "class" || javaTypeDecl || (ctx.lang === "cpp" && desc.kind === "struct"))
+    const kotlinTypeDecl = ctx.lang === "kotlin" && KOTLIN_TYPE_KINDS.has(desc.kind);
+    if (desc.kind === "class" || javaTypeDecl || kotlinTypeDecl || (ctx.lang === "cpp" && desc.kind === "struct"))
       edges.push(...heritageEdges(node, id, ctx));
     if (ctx.lang === "php") edges.push(...phpAttributeReferenceEdges(node, id, ctx));
 
@@ -567,7 +589,7 @@ function walk(node: Parser.SyntaxNode, ctx: WalkCtx, out: NodeV1[], edges: RawEd
     // definitions — makes `this->x()` inside `void Physics::step() { … }` resolve
     // against Physics, whose name lives in the declarator, not in any ancestor.
     const enclosingClass =
-      desc.kind === "class" || javaTypeDecl || (ctx.lang === "cpp" && desc.kind === "struct")
+      desc.kind === "class" || javaTypeDecl || kotlinTypeDecl || (ctx.lang === "cpp" && desc.kind === "struct")
         ? desc.name
         : isGoMethod
           ? goReceiverType(node)
@@ -933,6 +955,7 @@ function describe(node: Parser.SyntaxNode, ctx: WalkCtx): DefDescriptor | null {
   if (ctx.lang === "go") return describeGo(node, ctx);
   if (ctx.lang === "java") return describeJava(node, ctx);
   if (ctx.lang === "cpp") return describeCpp(node, ctx);
+  if (ctx.lang === "kotlin") return describeKotlin(node, ctx);
 
   // PHP closures: `$h = function () {…}` / `fn() => …`, and bare callbacks
   // (`$routes->get('/x', function () {…})`). Captured as function nodes so a
@@ -1074,6 +1097,90 @@ function describeJava(node: Parser.SyntaxNode, ctx: WalkCtx): DefDescriptor | nu
   return desc;
 }
 
+/** Kotlin definition shapes. Unlike Java's, tree-sitter-kotlin exposes no `name`
+ * or `body` fields: a definition's name is an unnamed `simple_identifier` (functions)
+ * or `type_identifier` (types) child, and its body is a `class_body` / `function_body`
+ * / `statements` child. `class_declaration` also folds classes, interfaces, and enum
+ * classes into one node type — the kind is read off the declaration's own keywords. */
+function describeKotlin(node: Parser.SyntaxNode, ctx: WalkCtx): DefDescriptor | null {
+  // The first direct `type_identifier` is the declared name (type parameters, primary
+  // constructor parameters and delegation specifiers are all nested beneath it).
+  const typeName = (): string | null =>
+    node.namedChildren.find((c) => c.type === "type_identifier")?.text ?? null;
+  // The first direct `simple_identifier` is the function name (receiver type, params
+  // and type parameters are all nested beneath other child nodes).
+  const funcName = (): string | null =>
+    node.namedChildren.find((c) => c.type === "simple_identifier")?.text ?? null;
+  // `class X : A, B()` heritage lives in `delegation_specifier` children; a nested
+  // type parameter's identifier is one of the same node type, so only direct children
+  // count as the declared name.
+  const headEnd = (type: string): number => {
+    const body = node.namedChildren.find((c) => c.type === type);
+    return body ? body.startIndex : node.endIndex;
+  };
+
+  if (node.type === "class_declaration") {
+    const name = typeName();
+    if (!name) return null;
+    let kind: Kind = "class";
+    if (node.namedChildren.some((c) => c.type === "enum_class_body")) kind = "enum";
+    else if (node.children.some((c) => c.type === "interface")) kind = "interface";
+    else {
+      const mods = node.namedChildren.find((c) => c.type === "modifiers");
+      // `annotation class` → the interface role Java's annotation_type_declaration plays.
+      if (mods?.namedChildren.some((c) => c.type === "class_modifier" && c.text === "annotation"))
+        kind = "interface";
+    }
+    const body = node.namedChildren.find(
+      (c) => c.type === "class_body" || c.type === "enum_class_body",
+    );
+    return { name, kind, headerEnd: body ? body.startIndex : node.endIndex, hashNode: node };
+  }
+
+  if (node.type === "object_declaration") {
+    const name = typeName();
+    if (!name) return null;
+    return { name, kind: "class", headerEnd: headEnd("class_body"), hashNode: node };
+  }
+
+  if (node.type === "function_declaration") {
+    const name = funcName();
+    if (!name) return null;
+    const kind: Kind = KOTLIN_TYPE_KINDS.has(ctx.enclosingKind ?? "file") ? "method" : "function";
+    return { name, kind, headerEnd: headEnd("function_body"), hashNode: node };
+  }
+
+  if (node.type === "secondary_constructor") {
+    // Constructors carry no name of their own — they are the class's own, so scope the
+    // node under the enclosing class the same way Java's constructor_declaration does.
+    if (!ctx.enclosingClass) return null;
+    return {
+      name: ctx.enclosingClass,
+      kind: "method",
+      headerEnd: headEnd("statements"),
+      hashNode: node,
+    };
+  }
+
+  if (node.type === "type_alias") {
+    const name = typeName();
+    if (!name) return null;
+    return { name, kind: "type", headerEnd: node.endIndex, hashNode: node };
+  }
+
+  if (node.type === "property_declaration") {
+    // Top-level `val`/`var` only — a class property is a field, not a definition node
+    // (no depth tier emits fields), so it must not become one.
+    if (ctx.enclosingKind !== null) return null;
+    const decl = node.namedChildren.find((c) => c.type === "variable_declaration");
+    const name = decl?.namedChildren.find((c) => c.type === "simple_identifier")?.text;
+    if (!name) return null;
+    return { name, kind: "variable", headerEnd: node.endIndex, hashNode: node };
+  }
+
+  return null;
+}
+
 /** Java visibility: `public` (or `protected`) on the declaration's own modifier list.
  * A package-private or private member is not part of the API surface. Read off the
  * `modifiers` child's tokens, ignoring annotations, which live in the same node. */
@@ -1081,6 +1188,15 @@ function javaExported(node: Parser.SyntaxNode): boolean {
   const mods = node.namedChildren.find((c) => c.type === "modifiers");
   if (!mods) return false;
   return mods.children.some((c) => c.type === "public" || c.type === "protected");
+}
+
+/** Kotlin visibility: exported by default (`public` is implicit); only an explicit
+ * `internal` / `private` / `protected` visibility modifier hides a definition. */
+function kotlinExported(node: Parser.SyntaxNode): boolean {
+  const mods = node.namedChildren.find((c) => c.type === "modifiers");
+  if (!mods) return true;
+  const vis = mods.namedChildren.find((c) => c.type === "visibility_modifier");
+  return !vis || vis.text === "public";
 }
 
 /** C/C++ definition shapes (issue #66, definitions-only): function definitions
@@ -1207,6 +1323,20 @@ function heritageEdges(node: Parser.SyntaxNode, classId: string, ctx: WalkCtx): 
         if (!name || typeParams.has(name)) continue;
         edges.push({ source: classId, relation, name, file: ctx.rel });
       }
+    }
+    return edges;
+  }
+  if (ctx.lang === "kotlin") {
+    // The `:` clause is a list of `delegation_specifier`s — a superclass construction
+    // (`class A : B()`), an interface, or `by` delegation. The first `type_identifier`
+    // under each names the type; everything else (type args, delegation target) is not
+    // the heritage target, so only the head type counts.
+    for (const child of node.namedChildren) {
+      if (child.type !== "delegation_specifier") continue;
+      const t = child.namedChildren.find((c) => c.type === "user_type")?.namedChildren.find(
+        (c) => c.type === "type_identifier",
+      );
+      if (t) edges.push({ source: classId, relation: "extends", name: t.text, file: ctx.rel });
     }
     return edges;
   }
@@ -1339,6 +1469,13 @@ function calleeName(
     // conservative: an unmatched name (e.g. a static import) resolves to nothing.
     if (!obj) return { name: nameNode.text, viaMember: true, receiver: "this" };
     return { name: nameNode.text, viaMember: true, receiver: javaReceiver(obj) };
+  }
+
+  if (lang === "kotlin") {
+    // `import com.example.Foo` — the dotted path is the `identifier` child. A
+    // wildcard (`import a.b.*`) and an `as` alias are separate children, so the
+    // identifier text is already the module path (wildcards dropped, like Java).
+    return node.namedChildren.find((c) => c.type === "identifier")?.text ?? null;
   }
 
   // Shell: a `command` node's callee is its `name` field. Only a name that
@@ -1538,6 +1675,7 @@ function isImport(node: Parser.SyntaxNode, lang: Language): boolean {
   if (lang === "go") return node.type === "import_spec";
   if (lang === "java") return node.type === "import_declaration";
   if (lang === "cpp") return node.type === "preproc_include";
+  if (lang === "kotlin") return node.type === "import_header";
   // PHP: one edge per imported symbol — the clause leaf inside a (possibly
   // grouped) `use A\B, C\D;` / `use A\{B, C};` declaration.
   if (lang === "php") return node.type === "namespace_use_clause";
@@ -1569,6 +1707,12 @@ function importSpecifier(node: Parser.SyntaxNode, lang: Language): string | null
       (c) => c.type === "scoped_identifier" || c.type === "identifier",
     );
     return id?.text ?? null;
+  }
+  if (lang === "kotlin") {
+    // `import com.example.Foo` — the dotted path is the `identifier` child. A
+    // wildcard (`import a.b.*`) and an `as` alias are separate children, so the
+    // identifier text is already the module path (wildcards dropped, like Java).
+    return node.namedChildren.find((c) => c.type === "identifier")?.text ?? null;
   }
   if (lang === "cpp") {
     // Quoted includes only — `<...>` names a system header by convention, which
