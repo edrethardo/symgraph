@@ -47,7 +47,6 @@ export const GENERIC_LANGS: readonly GenericLang[] = [
   // DEPTH extractor for the C family (typed receivers, #include closure,
   // namespace resolution), and the registry forbids overlapping extensions.
   { name: "ruby", exts: [".rb"], wasm: "ruby" },
-  { name: "php", exts: [".php"], wasm: "php" },
   { name: "c_sharp", exts: [".cs"], wasm: "c_sharp" },
   // These ship a tags.scm (calls + symbols); ocaml/zig have none and use the
   // node-kind walker fallback (symbols only) — still one row, zero query.
