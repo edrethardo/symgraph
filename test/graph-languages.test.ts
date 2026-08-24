@@ -27,6 +27,7 @@ const INDEXED = [
   "a.tsx", "a.jsx",
   "a.py", "a.pyi",
   "a.go",
+  "a.R", "a.r",
   "a.java",
   "a.c", "a.h",
   "a.cpp", "a.cc", "a.cxx",
@@ -60,6 +61,8 @@ test("labels name the language, not the grammar that parses it", () => {
   assert.equal(languageLabelOf("api/main.py"), "python");
   assert.equal(languageLabelOf("api/main.pyi"), "python");
   assert.equal(languageLabelOf("cmd/main.go"), "go");
+  assert.equal(languageLabelOf("analysis/model.R"), "r");
+  assert.equal(languageLabelOf("analysis/model.r"), "r");
   assert.equal(languageLabelOf("src/main/java/com/acme/App.java"), "java");
   // One label for the whole C family: the cpp grammar parses C too, and a `.h`
   // can't be attributed to either language from its name alone.
