@@ -258,7 +258,7 @@ function handleStop(dir: string): void {
   const stats = readStats(dir);
   if (stats?.dirty && acquireLock(dir)) {
     patchStats(dir, { syncing: true });
-    const child = spawn(process.execPath, [syncRun, dir], { detached: true, stdio: 'ignore' });
+    const child = spawn(process.execPath, [syncRun, dir], { detached: true, stdio: 'ignore', windowsHide: true });
     child.unref();
   }
 }
