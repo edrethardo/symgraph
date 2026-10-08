@@ -1,47 +1,46 @@
-> **Fork notice (edrethardo/Graft):** this fork extends upstream Graft with
-> C/C++, shell, and Java in the Tier-1 symbol graph, receiver-typed +
-> include-closure + namespace call-edge resolution for C++, and honest
-> reporting for unsupported languages. Everything is offered upstream
-> (NanoNets/Graft [#66](https://github.com/NanoNets/Graft/issues/66),
-> [#67](https://github.com/NanoNets/Graft/pull/67),
-> [#68](https://github.com/NanoNets/Graft/issues/68)) and this fork tracks
-> upstream `main`; it exists so the features are usable while review is slow.
-> See [CHANGELOG.md](CHANGELOG.md) ("Unreleased") for the full delta.
+# symgraph
+
+> **Fork notice:** symgraph is a fork of [Graft](https://github.com/trailhq/Graft)
+> (MIT), by the Graft contributors at Nanonets/trailhq. It was renamed, and it
+> ships **no telemetry and no cloud upload**: upstream's Trail/brain integration,
+> usage telemetry and "tokens/dollars saved" estimates are left out on purpose.
+> It adds C/C++ and shell to the depth tier, with receiver-typed, include-closure
+> and namespace call-edge resolution for C++, and it reports unsupported languages
+> honestly instead of skipping them. Useful upstream fixes and features are picked
+> in selectively; see [CHANGELOG.md](CHANGELOG.md).
+>
+> **Coming from graft?** The `graft` command still works and points you at
+> `symgraph`, `GRAFT_*` variables are still read, an existing `graft/` folder is
+> moved to `symgraph/` on the next build, and `symgraph init` replaces the old
+> graft wiring.
 
 <div align="center">
 
-<img src="assets/graft-hero.png" alt="Graft — open-source context layer for large codebases" width="100%"/>
-
-### Turbocharge Claude Code, Cursor, Codex, Gemini & every coding agent: faster, cheaper, with contextual understanding specific to your codebase.
+### Look code up instead of grepping for it: a local symbol and call graph for Claude Code, Cursor, Codex, Gemini and other coding agents.
 
 <p>
-  <a href="https://github.com/NanoNets/Graft"><img src="https://img.shields.io/github/stars/NanoNets/Graft?style=for-the-badge&logo=github&logoColor=white&label=Star%20on%20GitHub&color=FFC83D" /></a>
-  <a href="https://graft.nanonets.ai"><img src="https://img.shields.io/badge/website-graft.nanonets.ai-546FFF?style=for-the-badge" /></a>
-  <a href="https://discord.gg/zxmKweAA29"><img src="https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white" /></a>
-  <a href="https://www.npmjs.com/package/@nanonets/graft"><img src="https://img.shields.io/npm/v/%40nanonets%2Fgraft?style=for-the-badge&logo=npm&logoColor=white&label=npm" /></a>
-  <a href="https://www.npmjs.com/package/@nanonets/graft"><img src="https://img.shields.io/npm/dm/%40nanonets%2Fgraft?style=for-the-badge&logo=npm&logoColor=white&label=downloads" /></a>
-  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/%40nanonets%2Fgraft?style=for-the-badge&logo=nodedotjs&logoColor=white" /></a>
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
   <img src="https://img.shields.io/badge/License-MIT-20C997?style=for-the-badge" />
   <img src="https://img.shields.io/badge/telemetry-none-546FFF?style=for-the-badge" />
-  <a href="https://scorecard.dev/viewer/?uri=github.com/NanoNets/Graft"><img src="https://img.shields.io/ossf-scorecard/github.com/NanoNets/Graft?style=for-the-badge&label=openssf%20scorecard" /></a>
 </p>
 
 ### Up to **4× cheaper** and **3× faster**, with better or no loss of correctness.
 
-| Metric | Cold Claude Code | Claude Code with graft |
+<sub>These numbers were measured by upstream Graft on the shared engine; this fork has not re-run them.</sub>
+
+| Metric | Cold Claude Code | Claude Code with symgraph |
 |---|---|---|
 | Tool-call reduction | Baseline | **+46%** |
 | Token savings | Baseline | **+42%** |
 | Time savings | Baseline | **+60%** |
 | Correctness | 54% | **66% (+12 pts)** |
 
-<sub>Efficiency is a 162-run controlled benchmark (same agent, same file tools, only the context differs). Correctness is **SWE-bench Verified**, graded by the official harness — graft resolved 66% of instances tested against Cold Claude Code's 54%. [Efficiency method ↓](#benchmark) · [SWE-bench ↓](#swe-bench-verified) · [Per-repo numbers ↓](#tested-on-your-popular-repos)</sub>
+<sub>Efficiency is a 162-run controlled benchmark (same agent, same file tools, only the context differs). Correctness is **SWE-bench Verified**, graded by the official harness — symgraph resolved 66% of instances tested against Cold Claude Code's 54%. [Efficiency method ↓](#benchmark) · [SWE-bench ↓](#swe-bench-verified) · [Per-repo numbers ↓](#tested-on-your-popular-repos)</sub>
 
 </div>
 
 <p align="center">
-  <img src="assets/graft-comparison-demo.gif" alt="Side-by-side comparison of a coding agent working with and without graft" width="820"/>
+  <img src="assets/symgraph-comparison-demo.gif" alt="Side-by-side comparison of a coding agent working with and without symgraph" width="820"/>
 </p>
 
 ---
@@ -50,7 +49,7 @@
 
 - [Quick start](#quick-start)
 - [The problem](#the-problem)
-- [What Graft does](#what-graft-does)
+- [What Symgraph does](#what-symgraph-does)
 - [Benchmark](#benchmark)
 - [SWE-bench Verified](#swe-bench-verified)
 - [How the graph gets built](#how-the-graph-gets-built)
@@ -59,9 +58,9 @@
 - [What runs where](#what-runs-where)
 - [Agent integration](#agent-integration) — [MCP server](#mcp-server) · [Claude Code (deep integration)](#claude-code-deep-integration)
 - [CLI](#cli)
-- [Search & orient](#search--orient-graft-grep--graft-map) (`graft grep` / `graft map`)
+- [Search & orient](#search--orient-symgraph-grep--symgraph-map) (`symgraph grep` / `symgraph map`)
 - [Monorepos & multi-repo folders](#monorepos--multi-repo-folders)
-- [Visualize it](#visualize-it-graft-viz) (`graft viz`)
+- [Visualize it](#visualize-it-symgraph-viz) (`symgraph viz`)
 - [Tested on your popular repos](#tested-on-your-popular-repos)
 - [Development](#development)
 - [License](#license)
@@ -71,24 +70,24 @@
 ## Quick start
 
 ```bash
-npm install -g @nanonets/graft   # install the CLI, once
-graft init                       # build the graph + wire it into Claude Code
+npm install -g symgraph   # install the CLI, once
+symgraph init                       # build the graph + wire it into Claude Code
 ```
 
-That is the whole setup. `graft init` asks which of your coding agents to wire up, builds `graft/` from your code, and drops a statusline and hooks into `.claude/`, so from the next session on Graft rides along in Claude Code: it pulls the matching nodes into each prompt and rebuilds the graph in the background after every turn. No daemon, no re-indexing to remember, nothing to run or maintain by default — the graph is just files.
+That is the whole setup. `symgraph init` asks which of your coding agents to wire up, builds `symgraph/` from your code, and drops a statusline and hooks into `.claude/`, so from the next session on Symgraph rides along in Claude Code: it pulls the matching nodes into each prompt and rebuilds the graph in the background after every turn. No daemon, no re-indexing to remember, nothing to run or maintain by default — the graph is just files.
 
-Nothing is written until you pick. Run `graft init --dry-run` to see every file it would touch first, or `graft init --agents claude` to skip the prompt and wire Claude Code alone.
+Nothing is written until you pick. Run `symgraph init --dry-run` to see every file it would touch first, or `symgraph init --agents claude` to skip the prompt and wire Claude Code alone.
 
-`graft build` adds `graft/` to your `.gitignore` automatically — the graph is a local, regenerable cache (like `node_modules`), not something you commit. What you share is the wiring `init` dropped into `.claude/`; each teammate runs `graft build` to generate their own graph:
+`symgraph build` adds `symgraph/` to your `.gitignore` automatically — the graph is a local, regenerable cache (like `node_modules`), not something you commit. What you share is the wiring `init` dropped into `.claude/`; each teammate runs `symgraph build` to generate their own graph:
 
 ```bash
-git add .claude && git commit -m "wire in graft"
+git add .claude && git commit -m "wire in symgraph"
 ```
 
-Prefer not to install globally? `npx @nanonets/graft init` works the same way.
+Prefer not to install globally? `npx symgraph init` works the same way.
 
 <p align="center">
-  <img src="assets/graft-terminal.png" alt="Two commands — npm install and graft init — then Graft rides along in a Claude Code session, statusline synced" width="820"/>
+  <img src="assets/symgraph-terminal.png" alt="Two commands — npm install and symgraph init — then Symgraph rides along in a Claude Code session, statusline synced" width="820"/>
 </p>
 
 ---
@@ -104,25 +103,25 @@ Every task, your coding agent starts blind. Before it changes anything, it re-ex
 Humans onboard to a codebase once. Agents onboard every single time.
 
 <p align="center">
-  <img src="assets/graft-site-act-demo.gif" alt="A no-map agent's exploration trail wandering file to file before it finds what it needs" width="820"/>
+  <img src="assets/symgraph-site-act-demo.gif" alt="A no-map agent's exploration trail wandering file to file before it finds what it needs" width="820"/>
 </p>
 
 ---
 
-## What Graft does
+## What Symgraph does
 
-Graft builds that understanding **once** and writes it into your repo as a folder of linked markdown files, one node per system, API, or concept.
+Symgraph builds that understanding **once** and writes it into your repo as a folder of linked markdown files, one node per system, API, or concept.
 
 - **Real explanations, not a list of symbols.** Each node says, in plain English, what a part of the system does and how it connects to the rest, the way a senior engineer would explain it. That is the part an agent actually needs so it can skip the exploration. It is not a dump of function names.
 - **A real graph you can read.** No embeddings, no similarity search, no index to keep warm. The graph is a set of linked files your agent opens, greps, and follows, exactly the way it reads any other file in the repo.
-- **A local cache, not a committed artifact.** `graft build` writes `graft/` and adds it to `.gitignore` — it's a regenerable local cache, like `node_modules`. What you commit is the small wiring `graft init` drops in (`.claude/`, `AGENTS.md`, the MCP config); each teammate runs `graft build` to generate their own graph. No database, no server, no setup.
-- **Always fresh, automatically.** Every query rebuilds the graph against the working tree first — structural, `$0`, ~3ms when nothing moved — so `ask`/`grep`/`callers`/`skeleton`/`map` describe the code as it is right now, including uncommitted edits. `graft check` is a local freshness signal; there's no stale index to babysit.
-- **Your provider, your key, your model.** Summaries are written by any provider you choose — OpenAI, Anthropic (native), OpenRouter, Fireworks, Groq, OrcaRouter, a LiteLLM proxy, or a local model — under your own key. The structural code graph (`graft build`, `graft check`) is deterministic tree-sitter and never calls a model at all.
+- **A local cache, not a committed artifact.** `symgraph build` writes `symgraph/` and adds it to `.gitignore` — it's a regenerable local cache, like `node_modules`. What you commit is the small wiring `symgraph init` drops in (`.claude/`, `AGENTS.md`, the MCP config); each teammate runs `symgraph build` to generate their own graph. No database, no server, no setup.
+- **Always fresh, automatically.** Every query rebuilds the graph against the working tree first — structural, `$0`, ~3ms when nothing moved — so `ask`/`grep`/`callers`/`skeleton`/`map` describe the code as it is right now, including uncommitted edits. `symgraph check` is a local freshness signal; there's no stale index to babysit.
+- **Your provider, your key, your model.** Summaries are written by any provider you choose — OpenAI, Anthropic (native), OpenRouter, Fireworks, Groq, OrcaRouter, a LiteLLM proxy, or a local model — under your own key. The structural code graph (`symgraph build`, `symgraph check`) is deterministic tree-sitter and never calls a model at all.
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/graft-cold-vs-graft-dark.png">
-    <img src="assets/graft-cold-vs-graft.png" alt="The same task, 'fix the auth bug', run two ways. A cold Claude Code session re-reads the repo and wanders file to file; Claude Code + graft loads its map once and rides the hooks to one clean pass. With Graft: 46% fewer tool calls, 42% fewer tokens, 60% less time, +22% more SWE-bench instances resolved." width="880"/>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/symgraph-cold-vs-symgraph-dark.png">
+    <img src="assets/symgraph-cold-vs-symgraph.png" alt="The same task, 'fix the auth bug', run two ways. A cold Claude Code session re-reads the repo and wanders file to file; Claude Code + symgraph loads its map once and rides the hooks to one clean pass. With Symgraph: 46% fewer tool calls, 42% fewer tokens, 60% less time, +22% more SWE-bench instances resolved." width="880"/>
   </picture>
 </p>
 
@@ -132,11 +131,11 @@ Graft builds that understanding **once** and writes it into your repo as a folde
 
 An agent that reads the graph should be cheaper and faster without getting more answers wrong. That's the whole claim, so we measured it instead of asserting it.
 
-The harness ran three variants of the same Claude Sonnet 5 agent with the same file tools: **cold** (explores from zero), **Graft** (a `graft ask --source` bundle pushed up front), and **pull** (graft_find_code/graft_file_api tools, nothing injected — context paid for only when asked). An Opus 4.8 judge scored correctness with a required-keyword floor, so a fast-but-wrong answer couldn't win by being fast. Cost is cache-aware: reads ≈0.1×, writes 1.25×, the billing model agents actually run under.
+The harness ran three variants of the same Claude Sonnet 5 agent with the same file tools: **cold** (explores from zero), **Symgraph** (a `symgraph ask --source` bundle pushed up front), and **pull** (symgraph_find_code/symgraph_file_api tools, nothing injected — context paid for only when asked). An Opus 4.8 judge scored correctness with a required-keyword floor, so a fast-but-wrong answer couldn't win by being fast. Cost is cache-aware: reads ≈0.1×, writes 1.25×, the billing model agents actually run under.
 
-162 runs, two repos (graft itself and a real Node/Express auth service), 3 trials each, tasks split between single-file and multi-file questions.
+162 runs, two repos (symgraph itself and a real Node/Express auth service), 3 trials each, tasks split between single-file and multi-file questions.
 
-| Metric (mean/task) | Cold Claude Code | Claude Code with graft |
+| Metric (mean/task) | Cold Claude Code | Claude Code with symgraph |
 |---|---|---|
 | Cost savings ($) | 0.0429 | **0.0292 (+32%)** |
 | Token savings | 8,070 | **4,650 (+42%)** |
@@ -144,7 +143,7 @@ The harness ran three variants of the same Claude Sonnet 5 agent with the same f
 | Latency savings (s) | 39.8 | **15.8 (+60%)** |
 | Correctness | 93% | 93% (equal) |
 
-Graft never answered worse than cold, on any corpus. The pull variant gave up most of that speed for something bigger: correctness jumped to 98%, +5 points over cold, the strongest single result in the sweep. Push when speed is what you need; pull when being right matters more.
+Symgraph never answered worse than cold, on any corpus. The pull variant gave up most of that speed for something bigger: correctness jumped to 98%, +5 points over cold, the strongest single result in the sweep. Push when speed is what you need; pull when being right matters more.
 
 ---
 
@@ -152,9 +151,9 @@ Graft never answered worse than cold, on any corpus. The pull variant gave up mo
 
 The sweep above is our harness measuring our mechanism. So we ran the industry-standard one too — **SWE-bench Verified**, real GitHub issues from real repos, graded by the official `swebench` harness. No judge model, no similarity score: your patch is applied, the maintainers' own tests are run, and you either flip the failing test without breaking the passing ones or you don't.
 
-**50 instances**, same model on both arms — **Claude Sonnet 5** — same Docker images, same turn limits. The only difference is whether graft is wired in.
+**50 instances**, same model on both arms — **Claude Sonnet 5** — same Docker images, same turn limits. The only difference is whether symgraph is wired in.
 
-| Correctness & efficiency | Cold Claude Code | Claude Code with graft | Improvement |
+| Correctness & efficiency | Cold Claude Code | Claude Code with symgraph | Improvement |
 |---|---|---|---|
 | Correctness | 27 / 50 (54%) | **33 / 50 (66%)** | **+12 pts** |
 | Token savings | 142.0M | **109.4M** | **+23%** |
@@ -163,9 +162,9 @@ The sweep above is our harness measuring our mechanism. So we ran the industry-s
 | API-request savings | 2,455 | **1,875** | **+24%** |
 | Wall-clock savings | 13,094s | **8,922s** | **+32%** |
 
-graft resolved **33 of 50 instances** against Cold Claude Code's 27 — and got there with 25% fewer tool calls, 23% fewer tokens, and 32% less wall-clock time. Every correctness win has the same shape: the baseline patches one file and misses its siblings. On `django-11532` it patched 1 of the 5 files the fix requires and broke 18 previously-passing tests, twice over. On `django-16263` it patched 1 of 4 and scored 102 / 103. graft found the rest — and on `django-16263` did it in half the tokens and half the time.
+symgraph resolved **33 of 50 instances** against Cold Claude Code's 27 — and got there with 25% fewer tool calls, 23% fewer tokens, and 32% less wall-clock time. Every correctness win has the same shape: the baseline patches one file and misses its siblings. On `django-11532` it patched 1 of the 5 files the fix requires and broke 18 previously-passing tests, twice over. On `django-16263` it patched 1 of 4 and scored 102 / 103. symgraph found the rest — and on `django-16263` did it in half the tokens and half the time.
 
-Two harnesses, two claims: the controlled sweep says graft is cheaper and faster, SWE-bench says it's also more correct.
+Two harnesses, two claims: the controlled sweep says symgraph is cheaper and faster, SWE-bench says it's also more correct.
 
 <sub>Correctness over all instances; tokens, cost and calls over the instances both arms resolved, for a like-for-like comparison. Official SWE-bench Verified images and official `swebench` 4.1.0 grader, native x86_64.</sub>
 
@@ -173,31 +172,31 @@ Two harnesses, two claims: the controlled sweep says graft is cheaper and faster
 
 ## How the graph gets built
 
-Graft builds the graph in two passes, both powered by a language model:
+Symgraph builds the graph in two passes, both powered by a language model:
 
 1. **Read each file.** Every source file is summarized once into a short description of what it does.
-2. **Group into nodes.** Those summaries are grouped into a curated set of nodes (subsystems, key files, and concepts) with typed links between them. Graft chooses the right level of detail for you instead of making one node per file, so a big repo becomes a few dozen readable nodes.
+2. **Group into nodes.** Those summaries are grouped into a curated set of nodes (subsystems, key files, and concepts) with typed links between them. Symgraph chooses the right level of detail for you instead of making one node per file, so a big repo becomes a few dozen readable nodes.
 
 ```mermaid
 flowchart LR
     S[Source files] --> T["Tier 1 — tree-sitter<br/>no model, no key"]
     S --> P1["Pass 1 — LLM summarizes<br/>each file (--deep)"]
-    T --> W["graft/.graph/wiring.json<br/>per-symbol code graph"]
+    T --> W["symgraph/.graph/wiring.json<br/>per-symbol code graph"]
     P1 --> P2["Pass 2 — group into nodes<br/>+ typed links"]
-    P2 --> N["graft/*.md<br/>markdown node graph"]
+    P2 --> N["symgraph/*.md<br/>markdown node graph"]
 ```
 
-Every pass is cached by content hash — the LLM ones and the tree-sitter parse alike. Re-running only touches the files that changed, so the second build is fast and cheap (on this repo, 124 files: 0.74s cold, 0.18s after one edited file, 0.18s with nothing changed). `graft build --no-reuse` forces a cold re-parse.
+Every pass is cached by content hash — the LLM ones and the tree-sitter parse alike. Re-running only touches the files that changed, so the second build is fast and cheap (on this repo, 124 files: 0.74s cold, 0.18s after one edited file, 0.18s with nothing changed). `symgraph build --no-reuse` forces a cold re-parse.
 
-That cheapness is what lets **every query refresh the graph before it answers**. A retrieval call stats the tree against the last build's fingerprint (~3ms), and rebuilds only if something moved — so `ask`/`grep`/`callers`/`skeleton`/`map` describe the code as it is right now, including edits that are unsaved to git: uncommitted, unstaged, or staged all look the same to graft. Git determines the visible file set; freshness compares the working-tree bytes rather than commit or index state. The refresh is structural and `$0`; it never calls the LLM. Turn it off per-command with `--no-refresh`, or everywhere with `GRAFT_NO_REFRESH=1`.
+That cheapness is what lets **every query refresh the graph before it answers**. A retrieval call stats the tree against the last build's fingerprint (~3ms), and rebuilds only if something moved — so `ask`/`grep`/`callers`/`skeleton`/`map` describe the code as it is right now, including edits that are unsaved to git: uncommitted, unstaged, or staged all look the same to symgraph. Git determines the visible file set; freshness compares the working-tree bytes rather than commit or index state. The refresh is structural and `$0`; it never calls the LLM. Turn it off per-command with `--no-refresh`, or everywhere with `SYMGRAPH_NO_REFRESH=1`.
 
-Alongside the markdown graph, `graft build` builds `graft/.graph/wiring.json` — a per-symbol code graph — plus a per-file wiring card mirroring your source tree. Tier 1 is pure tree-sitter (every function, class, and call edge; deterministic, no model, no network), which is why plain `graft build` needs no key. The `--deep` pass adds a one-line summary and a crux excerpt per symbol, cached by body hash.
+Alongside the markdown graph, `symgraph build` builds `symgraph/.graph/wiring.json` — a per-symbol code graph — plus a per-file wiring card mirroring your source tree. Tier 1 is pure tree-sitter (every function, class, and call edge; deterministic, no model, no network), which is why plain `symgraph build` needs no key. The `--deep` pass adds a one-line summary and a crux excerpt per symbol, cached by body hash.
 
 ---
 
 ## Supported languages
 
-Graft parses with tree-sitter at two levels of fidelity, plus an optional
+Symgraph parses with tree-sitter at two levels of fidelity, plus an optional
 compiler-grade layer — all `$0` and deterministic (no model, no key):
 
 - **Full-fidelity** — hand-written extractors with scope-aware, cross-file call
@@ -213,7 +212,7 @@ compiler-grade layer — all `$0` and deterministic (no model, no key):
   **Rust, C, C++, C#, Ruby, Scala, Elixir, Solidity,
   OCaml, Zig, Dart, Clojure, Nix, Lua**.
 
-- **Compiler-grade edges (opt-in)** — `graft build --lsp` adds precise
+- **Compiler-grade edges (opt-in)** — `symgraph build --lsp` adds precise
   `lsp_resolved` call edges (member calls the static pass can't type) when a
   language server is on your `PATH`: **rust-analyzer** (Rust), **clangd** (C/C++),
   **gopls** (Go), **pyright** (Python), **typescript-language-server** (TS/JS).
@@ -227,7 +226,7 @@ indexed. Adding a broad-tier language is a small contribution — see
 
 ## What's in a node
 
-A node is a single markdown file. Most code maps stop at an address: this thing lives in that file, on that line. That tells an agent where to look, not what it will find, so it still has to open the source and read. A Graft node holds the meaning inline, so the agent learns what it needs up front and opens the file only when it wants more.
+A node is a single markdown file. Most code maps stop at an address: this thing lives in that file, on that line. That tells an agent where to look, not what it will find, so it still has to open the source and read. A Symgraph node holds the meaning inline, so the agent learns what it needs up front and opens the file only when it wants more.
 
 Each node holds:
 
@@ -235,23 +234,23 @@ Each node holds:
 |---|---|
 | **Summary** | A plain-English explanation of what the code does, written by the model and cached. It is there whether or not the code was ever documented, and it is regenerated when the source changes. |
 | **Crux** | The handful of lines that actually carry the logic: the guard, the skip condition, the state change. Lifted straight from the source and stored inline, so the agent sees *how* it works, not just what. |
-| **Sources** | The exact files the node is built from, each tracked by a content hash, so Graft can tell precisely when a node has gone stale. |
+| **Sources** | The exact files the node is built from, each tracked by a content hash, so Symgraph can tell precisely when a node has gone stale. |
 | **Links** | Typed connections to other nodes (`depends_on`, `part_of`, `uses`, `implements`, `produces`), written as `[[wikilinks]]` your agent can follow. |
 | **Notes** | Anything you write below the generated block. It is preserved across regenerations, so your own context is never overwritten. |
 
-That is three depths in one file: the summary says *what* the code does, the crux shows *how*, and the sources point to the rest if the agent needs it. A plain index makes it read a whole file to learn one thing. A Graft node hands it the answer inline, and the follow-up read often never happens.
+That is three depths in one file: the summary says *what* the code does, the crux shows *how*, and the sources point to the rest if the agent needs it. A plain index makes it read a whole file to learn one thing. A Symgraph node hands it the answer inline, and the follow-up read often never happens.
 
 The crux is stored as the code itself, not as a line range, on purpose. Line numbers drift whenever unrelated code above them shifts, but the lines that matter do not. Keeping the text, not the numbers, means the crux stays correct even as the file around it moves.
 
-_Summary, sources, links, and notes ship today in markdown nodes. The crux ships per-symbol in the code graph (`graft build --deep`); inlining it into markdown nodes is next._
+_Summary, sources, links, and notes ship today in markdown nodes. The crux ships per-symbol in the code graph (`symgraph build --deep`); inlining it into markdown nodes is next._
 
 ---
 
 ## What runs where
 
-- **On your machine, no key, no network:** the structural code graph. `graft build` (wiring graph + per-file cards), `graft check`, and `graft ask` are deterministic tree-sitter — they never call a model.
-- **Through your provider key:** the LLM-written parts — `graft build --deep` adds the concept nodes (file summaries + node synthesis) and the per-symbol summaries and cruxes. graft is vendor-neutral: set `GRAFT_PROVIDER` (`openai` for any OpenAI-compatible endpoint, `anthropic` for the native API, or `litellm` / `orcarouter` for a gateway that speaks the OpenAI-compatible format), your `GRAFT_API_KEY`, `GRAFT_MODEL`, and — for the `openai` wire format — `GRAFT_BASE_URL` to point at OpenRouter, Fireworks, Groq, a LiteLLM proxy, a local server, or OpenAI itself. Or pass `--provider/--model/--api-key/--base-url` on the command line. (`OPENROUTER_API_KEY` still works as a deprecated fallback, and `ORCAROUTER_API_KEY` as a second one.)
-- **No telemetry** and no analytics — the only network calls are the LLM requests you configured.
+- **On your machine, no key, no network:** the structural code graph. `symgraph build` (wiring graph + per-file cards), `symgraph check`, and `symgraph ask` are deterministic tree-sitter — they never call a model.
+- **Through your provider key:** the LLM-written parts — `symgraph build --deep` adds the concept nodes (file summaries + node synthesis) and the per-symbol summaries and cruxes. symgraph is vendor-neutral: set `SYMGRAPH_PROVIDER` (`openai` for any OpenAI-compatible endpoint, `anthropic` for the native API, or `litellm` / `orcarouter` for a gateway that speaks the OpenAI-compatible format), your `SYMGRAPH_API_KEY`, `SYMGRAPH_MODEL`, and — for the `openai` wire format — `SYMGRAPH_BASE_URL` to point at OpenRouter, Fireworks, Groq, a LiteLLM proxy, a local server, or OpenAI itself. Or pass `--provider/--model/--api-key/--base-url` on the command line. (`OPENROUTER_API_KEY` still works as a deprecated fallback, and `ORCAROUTER_API_KEY` as a second one.)
+- **No telemetry** and no analytics — the only network calls are the LLM requests you configured and a daily `npm view symgraph version` update check.
 
 See [`.env.example`](.env.example) for the full list of settings (model, base URL, graph directory).
 
@@ -259,15 +258,15 @@ See [`.env.example`](.env.example) for the full list of settings (model, base UR
 
 ## Agent integration
 
-One command wires Graft into the coding agents you use:
+One command wires Symgraph into the coding agents you use:
 
 ```bash
-npx @nanonets/graft init
+npx symgraph init
 # detects your agents and writes each one's native instruction file;
 # Claude Code additionally gets the live statusline + hooks below
 ```
 
-On a terminal, `init` shows you every agent it knows about — flagging the ones it detected (via their config directories) and listing the exact files each would write — and wires only the ones you select. Claude Code is pre-selected; nothing else is. Selected agents get a marker-fenced Graft section in their shared instruction file — `AGENTS.md` (Codex, OpenCode and other CLIs that read it), `GEMINI.md`, `.github/copilot-instructions.md` — or a wholly-owned rule/skill file for the agents that use one: `.claude/skills/graft/SKILL.md`, `.cursor/rules/graft.mdc`, `.kiro/steering/graft.md`, `.windsurf/rules/graft.md`, `.grok/skills/graft/SKILL.md` for Grok (xAI), `.adal/skills/graft/SKILL.md` for [AdaL](https://adal.sylph.ai). Claude Code is in the second group: `init` writes its own skill file and never touches your `CLAUDE.md`. Re-running only updates Graft's own section (or replaces the owned file) and never touches the rest of your content.
+On a terminal, `init` shows you every agent it knows about — flagging the ones it detected (via their config directories) and listing the exact files each would write — and wires only the ones you select. Claude Code is pre-selected; nothing else is. Selected agents get a marker-fenced Symgraph section in their shared instruction file — `AGENTS.md` (Codex, OpenCode and other CLIs that read it), `GEMINI.md`, `.github/copilot-instructions.md` — or a wholly-owned rule/skill file for the agents that use one: `.claude/skills/symgraph/SKILL.md`, `.cursor/rules/symgraph.mdc`, `.kiro/steering/symgraph.md`, `.windsurf/rules/symgraph.md`, `.grok/skills/symgraph/SKILL.md` for Grok (xAI), `.adal/skills/symgraph/SKILL.md` for [AdaL](https://adal.sylph.ai). Claude Code is in the second group: `init` writes its own skill file and never touches your `CLAUDE.md`. Re-running only updates Symgraph's own section (or replaces the owned file) and never touches the rest of your content.
 
 With no TTY to prompt on — CI, a Dockerfile, a piped shell — `init` writes **nothing** and prints the command to run instead. Pass `--agents <ids>` or `--yes` to make a scripted run explicit.
 
@@ -281,7 +280,7 @@ With no TTY to prompt on — CI, a Dockerfile, a piped shell — `init` writes *
 | `--list-agents` | print the known agent ids and exit |
 | `--no-mcp` | skip MCP server registration |
 | `--no-hooks` | skip hook installation |
-| `--no-statusline` | skip writing Claude Code `statusLine` (same as `GRAFT_NO_STATUSLINE=1`) |
+| `--no-statusline` | skip writing Claude Code `statusLine` (same as `SYMGRAPH_NO_STATUSLINE=1`) |
 | `--no-global` | skip writes outside this repo (the `~/.codex/` entries below) |
 
 #### Writes outside the repo
@@ -290,127 +289,127 @@ Selecting the `agents` host also touches your **user-level** Codex config, when 
 
 | Path | What changes |
 |---|---|
-| `~/.codex/config.toml` | registers the Graft MCP server (`[mcp_servers.graft]`) |
-| `~/.codex/hooks/graft/graft-hooks.cjs` | the post-edit hook shim |
+| `~/.codex/config.toml` | registers the Symgraph MCP server (`[mcp_servers.symgraph]`) |
+| `~/.codex/hooks/symgraph/symgraph-hooks.cjs` | the post-edit hook shim |
 | `~/.codex/hooks.json` | a `PostToolUse` entry matching `Write\|Edit\|MultiEdit` |
 
 Both configs are user-level, so they apply to **every** repo you open with Codex, not just this one. The picker labels these `machine-wide`, `--dry-run` lists them in their own section, and `--no-global` skips them while still wiring `AGENTS.md`.
 
 ### MCP server
 
-`graft init` also registers Graft's MCP server with agents that support it, so these six tools appear natively, no shell required. Claude Code gets this too: `graft init` writes the server into the project's `.mcp.json` (restart Claude Code to load it). Skip with `--no-mcp`; run it manually with `graft mcp [dir]`.
+`symgraph init` also registers Symgraph's MCP server with agents that support it, so these six tools appear natively, no shell required. Claude Code gets this too: `symgraph init` writes the server into the project's `.mcp.json` (restart Claude Code to load it). Skip with `--no-mcp`; run it manually with `symgraph mcp [dir]`.
 
 | Tool | Takes | What it's for |
 |---|---|---|
-| `graft_find_code` | a question | Ranked nodes with file:line, source inlined — usually the full answer, no follow-up read needed. |
-| `graft_file_api` | a file path | Every signature in that file, no bodies — the API surface for a tenth of the tokens. |
-| `graft_trace_calls` | a symbol | Who depends on it, or what it depends on with `direction: out`, N levels deep for blast radius. |
-| `graft_find_all` | a regex | Every hit, grouped by enclosing symbol, ranked by how coupled that symbol is. |
-| `graft_repo_map` | nothing | A first look at an unfamiliar repo: directory clusters, hubs, hotspots. |
-| `graft_check_freshness` | nothing | Whether the local graph has drifted from the code. |
+| `symgraph_find_code` | a question | Ranked nodes with file:line, source inlined — usually the full answer, no follow-up read needed. |
+| `symgraph_file_api` | a file path | Every signature in that file, no bodies — the API surface for a tenth of the tokens. |
+| `symgraph_trace_calls` | a symbol | Who depends on it, or what it depends on with `direction: out`, N levels deep for blast radius. |
+| `symgraph_find_all` | a regex | Every hit, grouped by enclosing symbol, ranked by how coupled that symbol is. |
+| `symgraph_repo_map` | nothing | A first look at an unfamiliar repo: directory clusters, hubs, hotspots. |
+| `symgraph_check_freshness` | nothing | Whether the local graph has drifted from the code. |
 
 Register it by hand if your agent needs it explicit:
 
 ```json
-{ "mcpServers": { "graft": { "command": "npx", "args": ["-y", "@nanonets/graft", "mcp"] } } }
+{ "mcpServers": { "symgraph": { "command": "npx", "args": ["-y", "symgraph", "mcp"] } } }
 ```
 
-Where a CLI agent supports user-level `hooks.json`, `init` also installs Graft's post-edit hook — blast-radius warnings and automatic `$0` graph re-sync after edits (skip with `--no-hooks`).
+Where a CLI agent supports user-level `hooks.json`, `init` also installs Symgraph's post-edit hook — blast-radius warnings and automatic `$0` graph re-sync after edits (skip with `--no-hooks`).
 
 ### Claude Code (deep integration)
 
-`graft init` always wires up Claude Code, and Claude Code gets more than the skill file above. From then on, any Claude Code session opened in the repo gets:
+`symgraph init` always wires up Claude Code, and Claude Code gets more than the skill file above. From then on, any Claude Code session opened in the repo gets:
 
 - **a live statusline** — graph size, % enriched, and a `⚠ N stale` warning when the code has moved ahead of the graph
-- **auto-sync** — every graft query brings the graph up to date first, so an answer always describes the code as it is right now, uncommitted edits included. A query refreshes only what it reads; the markdown under `graft/` is refreshed by the background rebuild at the end of a turn that touched code. Both are structural and `$0` — auto-sync never calls the LLM on its own
+- **auto-sync** — every symgraph query brings the graph up to date first, so an answer always describes the code as it is right now, uncommitted edits included. A query refreshes only what it reads; the markdown under `symgraph/` is refreshed by the background rebuild at the end of a turn that touched code. Both are structural and `$0` — auto-sync never calls the LLM on its own
 - **context on tap** — each prompt pulls the matching nodes into the session; editing a file surfaces what depends on it ("blast radius"); new sessions start with the repo map
 
 <p align="center">
-  <img src="assets/graft-hooks-demo.gif" alt="How Claude Code hooks wire graft in: install, graft init, then the hooks loop (session start, user prompt, post tool use, stop) keeps the graph built, read, and committed automatically" width="820"/>
+  <img src="assets/symgraph-hooks-demo.gif" alt="How Claude Code hooks wire symgraph in: install, symgraph init, then the hooks loop (session start, user prompt, post tool use, stop) keeps the graph built, read, and committed automatically" width="820"/>
   <br/><sub>install → init → hooks keep the graph fresh every session</sub>
 </p>
 
 <p align="center">
-  <img src="assets/graft-hook-blast-radius-demo.gif" alt="graft's post-edit hook: editing node-file.ts prints its blast radius (who depends on it) inline, the statusline flips stale → syncing → synced on its own, and the same dependents light up in graft viz" width="820"/>
-  <br/><sub>edit a file → blast radius appears inline → graph auto-resyncs → confirmed in <code>graft viz</code></sub>
+  <img src="assets/symgraph-hook-blast-radius-demo.gif" alt="symgraph's post-edit hook: editing node-file.ts prints its blast radius (who depends on it) inline, the statusline flips stale → syncing → synced on its own, and the same dependents light up in symgraph viz" width="820"/>
+  <br/><sub>edit a file → blast radius appears inline → graph auto-resyncs → confirmed in <code>symgraph viz</code></sub>
 </p>
 
-`graft init` is idempotent and never clobbers your existing `.claude/settings.json` — it merges its blocks and leaves the rest alone. A `statusLine` that is not Graft's (anything whose command does not name `graft-statusline.cjs`) is left untouched; re-running `init` will refresh Graft's own helper command if it is already installed. Pass `--no-statusline` (or `GRAFT_NO_STATUSLINE=1`) to skip installing one at all — a project-level `statusLine` would otherwise hide a custom one in `~/.claude/settings.json`. Want the LLM summaries too? Run `graft build --deep` (with a key) whenever you like; auto-sync will never do it for you.
+`symgraph init` is idempotent and never clobbers your existing `.claude/settings.json` — it merges its blocks and leaves the rest alone. A `statusLine` that is not Symgraph's (anything whose command does not name `symgraph-statusline.cjs`) is left untouched; re-running `init` will refresh Symgraph's own helper command if it is already installed. Pass `--no-statusline` (or `SYMGRAPH_NO_STATUSLINE=1`) to skip installing one at all — a project-level `statusLine` would otherwise hide a custom one in `~/.claude/settings.json`. Want the LLM summaries too? Run `symgraph build --deep` (with a key) whenever you like; auto-sync will never do it for you.
 
 ---
 
 ## CLI
 
 ```bash
-graft build [dir]                    # build graft/ from the code at [dir]: wiring graph + per-file cards (no LLM, no key)
-graft build --deep                   # add the LLM layer: concept nodes + per-symbol summary/crux (cached)
-graft build --extensions .ts .py     # only include these code extensions
-graft build --no-reuse               # re-parse every file instead of replaying unchanged ones from cache
-graft build --follow-submodules      # include initialized submodules; persist the choice for builds + MCP refresh
-graft build --no-follow-submodules   # exclude submodules again and persist that choice (the default)
-graft build --follow-nested-repos    # include nested git clones the index doesn't track; persist the choice
-graft build --no-follow-nested-repos # exclude nested clones again and persist that choice (the default)
+symgraph build [dir]                    # build symgraph/ from the code at [dir]: wiring graph + per-file cards (no LLM, no key)
+symgraph build --deep                   # add the LLM layer: concept nodes + per-symbol summary/crux (cached)
+symgraph build --extensions .ts .py     # only include these code extensions
+symgraph build --no-reuse               # re-parse every file instead of replaying unchanged ones from cache
+symgraph build --follow-submodules      # include initialized submodules; persist the choice for builds + MCP refresh
+symgraph build --no-follow-submodules   # exclude submodules again and persist that choice (the default)
+symgraph build --follow-nested-repos    # include nested git clones the index doesn't track; persist the choice
+symgraph build --no-follow-nested-repos # exclude nested clones again and persist that choice (the default)
 
-graft ask "<task>" [dir]             # query the graph — ranked nodes + exact file:line (no LLM, no key)
-graft ask "<task>" --json            # machine-readable result
-graft ask "<task>" --in <scope>      # narrow to one sub-project of a monorepo/multi-repo folder (see below)
+symgraph ask "<task>" [dir]             # query the graph — ranked nodes + exact file:line (no LLM, no key)
+symgraph ask "<task>" --json            # machine-readable result
+symgraph ask "<task>" --in <scope>      # narrow to one sub-project of a monorepo/multi-repo folder (see below)
 
-graft skeleton <file> [dir]          # every signature in one file, no bodies — the API surface for ~1/10th the tokens (no LLM, no key)
+symgraph skeleton <file> [dir]          # every signature in one file, no bodies — the API surface for ~1/10th the tokens (no LLM, no key)
 
-graft callers <symbol> [dir]         # who calls/references/imports/implements/extends a symbol (no LLM, no key)
-graft callers <symbol> --direction out  # the reverse: what the symbol itself calls/references (was `graft callees`)
-graft callers <symbol> -d N          # walk transitively out to depth N — full blast radius (was `graft impact`)
+symgraph callers <symbol> [dir]         # who calls/references/imports/implements/extends a symbol (no LLM, no key)
+symgraph callers <symbol> --direction out  # the reverse: what the symbol itself calls/references (was `symgraph callees`)
+symgraph callers <symbol> -d N          # walk transitively out to depth N — full blast radius (was `symgraph impact`)
 
-graft grep "<regex>" [dir]           # exhaustive regex search over indexed files, grouped by enclosing symbol (no LLM, no key)
-graft grep "<regex>" --in <path>     # narrow to files at or under this path prefix
-graft grep "<regex>" -i --fixed      # case-insensitive; treat the pattern as a literal string, not a regex
+symgraph grep "<regex>" [dir]           # exhaustive regex search over indexed files, grouped by enclosing symbol (no LLM, no key)
+symgraph grep "<regex>" --in <path>     # narrow to files at or under this path prefix
+symgraph grep "<regex>" -i --fixed      # case-insensitive; treat the pattern as a literal string, not a regex
 
-graft map [dir]                      # token-budgeted repo orientation — dir clusters, hubs, hotspots (no LLM, no key)
-graft map --max-dirs N               # raise/lower the number of directories shown
+symgraph map [dir]                      # token-budgeted repo orientation — dir clusters, hubs, hotspots (no LLM, no key)
+symgraph map --max-dirs N               # raise/lower the number of directories shown
 
-graft blast [dir]                    # blast radius of a diff: what depends on the lines this change touched (no LLM, no key)
-graft blast --base origin/main       # diff against the merge base with HEAD — what a PR job runs
-graft blast --format markdown        # a PR comment: the areas a change can reach, per-symbol detail collapsed under it
-graft blast --base origin/main --name  # name those areas with one cached LLM call, instead of a full --deep build
-graft blast --export-viz site/       # also write the interactive page for this radius (what a PR comment links to)
-graft blast --no-owners              # skip "who to tag" — by default git history names the people behind each area
-graft blast --depth all --format json  # the full transitive closure, machine-readable
+symgraph blast [dir]                    # blast radius of a diff: what depends on the lines this change touched (no LLM, no key)
+symgraph blast --base origin/main       # diff against the merge base with HEAD — what a PR job runs
+symgraph blast --format markdown        # a PR comment: the areas a change can reach, per-symbol detail collapsed under it
+symgraph blast --base origin/main --name  # name those areas with one cached LLM call, instead of a full --deep build
+symgraph blast --export-viz site/       # also write the interactive page for this radius (what a PR comment links to)
+symgraph blast --no-owners              # skip "who to tag" — by default git history names the people behind each area
+symgraph blast --depth all --format json  # the full transitive closure, machine-readable
 
-graft check [dir]                    # fail (exit 1) if graft/ has drifted from the code (never auto-refreshes — it's the drift report)
-graft check --json                   # print the drift report as JSON
+symgraph check [dir]                    # fail (exit 1) if symgraph/ has drifted from the code (never auto-refreshes — it's the drift report)
+symgraph check --json                   # print the drift report as JSON
 
 # ask / skeleton / callers / grep / map / blast all refresh the graph first if the working tree moved:
 #   --no-refresh                     # answer from the graph exactly as it is on disk
-#   GRAFT_NO_REFRESH=1               # same, for every command
-#   GRAFT_REFRESH=hash               # hash every file instead of trusting size+mtime
+#   SYMGRAPH_NO_REFRESH=1               # same, for every command
+#   SYMGRAPH_REFRESH=hash               # hash every file instead of trusting size+mtime
 
-graft viz [dir]                      # see the graph: serves an interactive viewer on localhost
-graft viz --port 5000 --no-open      # pick a port; don't auto-open the browser
-graft viz --export site/ --title "PR #12"  # one self-contained index.html — for CI, GitHub Pages, or a build artifact
+symgraph viz [dir]                      # see the graph: serves an interactive viewer on localhost
+symgraph viz --port 5000 --no-open      # pick a port; don't auto-open the browser
+symgraph viz --export site/ --title "PR #12"  # one self-contained index.html — for CI, GitHub Pages, or a build artifact
 
-graft init [dir]                     # pick which agents to wire (prompts on a terminal; writes nothing until you choose)
-graft init --dry-run                 # list every file it would touch, then exit
-graft init --agents cursor kiro      # wire only these agents, no prompt (ids: agents, cursor, gemini, grok, copilot, kiro, windsurf, adal, claude)
-graft init --yes                     # no prompt; wire every detected agent
-graft init --no-global               # skip writes outside this repo (~/.codex/ config + hooks)
-graft init --no-statusline           # skip Claude Code statusLine (same as GRAFT_NO_STATUSLINE=1)
-graft init --no-build                # wire the files only; don't build the graph
-graft init --all-agents              # wire every known agent, detected or not
-graft init --list-agents             # list known agent ids and exit
+symgraph init [dir]                     # pick which agents to wire (prompts on a terminal; writes nothing until you choose)
+symgraph init --dry-run                 # list every file it would touch, then exit
+symgraph init --agents cursor kiro      # wire only these agents, no prompt (ids: agents, cursor, gemini, grok, copilot, kiro, windsurf, adal, claude)
+symgraph init --yes                     # no prompt; wire every detected agent
+symgraph init --no-global               # skip writes outside this repo (~/.codex/ config + hooks)
+symgraph init --no-statusline           # skip Claude Code statusLine (same as SYMGRAPH_NO_STATUSLINE=1)
+symgraph init --no-build                # wire the files only; don't build the graph
+symgraph init --all-agents              # wire every known agent, detected or not
+symgraph init --list-agents             # list known agent ids and exit
 
-graft uninstall [dir]                # remove every file and config entry graft wrote here (the inverse of init)
-graft uninstall -y                   # actually remove (without -y it prints what it would remove and exits)
-graft uninstall --keep-cache         # wiring only; leave graft/ and the .gitignore entry
-graft uninstall --no-global          # leave out-of-repo files alone (~/.codex, ~/.gemini)
+symgraph uninstall [dir]                # remove every file and config entry symgraph wrote here (the inverse of init)
+symgraph uninstall -y                   # actually remove (without -y it prints what it would remove and exits)
+symgraph uninstall --keep-cache         # wiring only; leave symgraph/ and the .gitignore entry
+symgraph uninstall --no-global          # leave out-of-repo files alone (~/.codex, ~/.gemini)
 
-graft version                        # print the installed + latest published npm version
-graft upgrade                        # npm install -g the latest published version
+symgraph version                        # print the installed + latest published npm version
+symgraph upgrade                        # npm install -g the latest published version
                                      # a new version is announced automatically (checked once a day);
                                      # after upgrading, the next session refreshes this repo's wiring itself
 
 # global
-graft --dir <path>                   # use a context dir other than <repo>/graft
-graft --version, -v                  # print the installed version and exit
+symgraph --dir <path>                   # use a context dir other than <repo>/symgraph
+symgraph --version, -v                  # print the installed version and exit
 ```
 
 Method calls resolve through the receiver's type — constructor assignments
@@ -418,11 +417,11 @@ Method calls resolve through the receiver's type — constructor assignments
 name — so `callers`/`grep --in` return calls bound to the right
 type on method-heavy code, not every method anywhere with that name.
 
-## Search & orient (`graft grep` / `graft map`)
+## Search & orient (`symgraph grep` / `symgraph map`)
 
-`graft grep "<regex>"` is exhaustive over every indexed file and groups hits
-by enclosing symbol, ranked by the same in-edge coupling `graft map` uses —
-built for "every occurrence of this pattern" tasks where `graft ask`'s
+`symgraph grep "<regex>"` is exhaustive over every indexed file and groups hits
+by enclosing symbol, ranked by the same in-edge coupling `symgraph map` uses —
+built for "every occurrence of this pattern" tasks where `symgraph ask`'s
 ranked top-N isn't enough:
 
 ```
@@ -435,7 +434,7 @@ rarelyCalled · function · src/a.ts:L4-L6 · 0 in-edges
   L5: console.log("NEEDLE hit in rarelyCalled");
 ```
 
-`graft map` is a token-budgeted first look at a repo — directory clusters
+`symgraph map` is a token-budgeted first look at a repo — directory clusters
 with file/symbol counts, each dir's local hubs, and the global hotspots —
 all ranked by in-degree, no LLM, no key:
 
@@ -452,55 +451,55 @@ hotspots: contextDirFor · function · src/context/node-file.ts:L100-L103 · 21�
 
 ## Monorepos, submodules & multi-repo folders
 
-Graft supports these layouts:
+Symgraph supports these layouts:
 
 - **A monorepo with one `.git`** (a `pnpm-workspace.yaml`/`package.json`
   `workspaces`, or per-package `go.mod`/`pyproject.toml`/`Cargo.toml`) —
-  `graft build` discovers each sub-project as a ranking scope. `ask`/`map`
+  `symgraph build` discovers each sub-project as a ranking scope. `ask`/`map`
   rank every scope on its own terms and fuse the results, so the biggest
   sub-project can't drown a small one; hits carry `[scope/]` labels, and
-  `graft map` groups its directory clusters by scope first.
+  `symgraph map` groups its directory clusters by scope first.
 - **A Git superproject with initialized submodules** — submodules stay excluded
-  by default. Run `graft build --follow-submodules` to fold initialized gitlinks
+  by default. Run `symgraph build --follow-submodules` to fold initialized gitlinks
   into one graph, prefixing child paths (for example,
   `deps/parser/src/index.ts`) while honoring each submodule's own Git ignore
   rules. Visible untracked files are included too; uninitialized submodules
   remain absent until `git submodule update --init` checks them out. The choice
-  is saved in `.graft/config.json`, so later no-flag builds and MCP automatic
-  refreshes behave the same way. Run `graft build --no-follow-submodules` to
+  is saved in `.symgraph/config.json`, so later no-flag builds and MCP automatic
+  refreshes behave the same way. Run `symgraph build --no-follow-submodules` to
   restore and persist the default boundary.
-- **A git repo with other repos cloned inside it** (no gitlink, no index entry) — the shape multi-repo manifest tools like `west`, `repo`, `gclient` and `tsrc` check dependencies out into, and the shape you get by cloning an upstream into the tree to patch it locally. `--follow-submodules` cannot reach these: they have no `160000` index entry to follow. Run `graft build --follow-nested-repos` to fold them into one graph, prefixing child paths (for example, `external/parser/src/index.ts`) while honoring each clone's own Git ignore rules. A clone at a git-ignored path stays absent, since Git never reports it. The choice is saved in `.graft/config.json` and is independent of `--follow-submodules` — neither flag implies the other. Run `graft build --no-follow-nested-repos` to restore and persist the default boundary. Prefer this over the multi-repo split below when the nested repos import from each other and you want those edges in one graph; prefer the split when you want each repo scored and refreshed on its own.
-- **A folder of separate git repos** (no `.git` at the top) — `graft build`
-  auto-splits: each child gets its own (git-ignored) `graft/`, and the parent
-  gets a `graft/workspace.json` index. Queries from the parent federate across
-  every child, always labeled `<child>/`. Run `graft build` inside a child to
+- **A git repo with other repos cloned inside it** (no gitlink, no index entry) — the shape multi-repo manifest tools like `west`, `repo`, `gclient` and `tsrc` check dependencies out into, and the shape you get by cloning an upstream into the tree to patch it locally. `--follow-submodules` cannot reach these: they have no `160000` index entry to follow. Run `symgraph build --follow-nested-repos` to fold them into one graph, prefixing child paths (for example, `external/parser/src/index.ts`) while honoring each clone's own Git ignore rules. A clone at a git-ignored path stays absent, since Git never reports it. The choice is saved in `.symgraph/config.json` and is independent of `--follow-submodules` — neither flag implies the other. Run `symgraph build --no-follow-nested-repos` to restore and persist the default boundary. Prefer this over the multi-repo split below when the nested repos import from each other and you want those edges in one graph; prefer the split when you want each repo scored and refreshed on its own.
+- **A folder of separate git repos** (no `.git` at the top) — `symgraph build`
+  auto-splits: each child gets its own (git-ignored) `symgraph/`, and the parent
+  gets a `symgraph/workspace.json` index. Queries from the parent federate across
+  every child, always labeled `<child>/`. Run `symgraph build` inside a child to
   work on just that repo.
 
-In every layout, narrow to one sub-project with `graft ask "<task>" --in <scope>/`
+In every layout, narrow to one sub-project with `symgraph ask "<task>" --in <scope>/`
 once you know where you're working.
 
-`graft init` at the parent of a multi-repo folder wires **every child repo too**,
+`symgraph init` at the parent of a multi-repo folder wires **every child repo too**,
 not just the parent — an agent session opens at a repo root and reads its
 instruction files from there, so each child needs its own. A session started in
 the parent gets the federated view; one started in a child sees that repo alone.
 
 Commands also find the graph from a subdirectory: with no `[dir]` argument they
-walk up to the nearest `graft/`, so `graft ask` works from `src/deep/inside/`
+walk up to the nearest `symgraph/`, so `symgraph ask` works from `src/deep/inside/`
 without a `cd` to the repo root.
 
-## Visualize it (`graft viz`)
+## Visualize it (`symgraph viz`)
 
-`graft viz` opens a local, interactive view of both graphs — no install, no dev
+`symgraph viz` opens a local, interactive view of both graphs — no install, no dev
 server; the viewer ships prebuilt inside the package.
 
 <p align="center">
-  <img src="assets/graft-viz-demo.gif" alt="graft viz — searching a symbol and jumping to it lights up its dependency graph: amber edges are what it depends on, teal is what depends on it" width="820"/>
+  <img src="assets/symgraph-viz-demo.gif" alt="symgraph viz — searching a symbol and jumping to it lights up its dependency graph: amber edges are what it depends on, teal is what depends on it" width="820"/>
   <br/><sub>search → jump to a node → dependency graph lights up</sub>
 </p>
 
-- **Context** tab — the architecture graph from `graft/*.md`. Nodes colored by
+- **Context** tab — the architecture graph from `symgraph/*.md`. Nodes colored by
   type, sized by connectedness.
-- **Code** tab — the per-symbol graph from `graft/.graph/wiring.json` (run `graft build` first).
+- **Code** tab — the per-symbol graph from `symgraph/.graph/wiring.json` (run `symgraph build` first).
 - **Outline** tab — the file → class → method hierarchy as a collapsible tree.
 
 Edges speak the code's language. Every link is one of a closed set of verbs, each
@@ -518,7 +517,7 @@ answering a question someone building or reviewing code actually asks:
 Select a node and its edges take on direction: **amber = what it depends on,
 teal = what depends on it**, with the verb written on each highlighted edge.
 Chips above the canvas filter by verb; tree-sitter-extracted edges draw solid
-while LLM-inferred ones draw dashed. The viewer live-reloads when `graft/`
+while LLM-inferred ones draw dashed. The viewer live-reloads when `symgraph/`
 changes on disk. Older graphs with vague verbs (`influences`, `supports`) are
 normalized on load — no regeneration needed.
 
@@ -526,19 +525,19 @@ normalized on load — no regeneration needed.
 
 ## Tested on your popular repos
 
-The [benchmarks](#benchmark) measure the mechanism. The real test is whether graft helps an agent **ship real changes** on code people actually run, not just answer questions. So we benchmark it on popular open-source repos: **15 tasks each**, 10 real developer questions plus **5 actual implementation tasks** (real merged pull requests, each re-implemented from its base commit and scored against the files the maintainers actually changed). Same agent (Claude Opus), same file tools; the only difference is whether graft is wired in.
+The [benchmarks](#benchmark) measure the mechanism. The real test is whether symgraph helps an agent **ship real changes** on code people actually run, not just answer questions. So we benchmark it on popular open-source repos: **15 tasks each**, 10 real developer questions plus **5 actual implementation tasks** (real merged pull requests, each re-implemented from its base commit and scored against the files the maintainers actually changed). Same agent (Claude Opus), same file tools; the only difference is whether symgraph is wired in.
 
-Across these repos graft runs **up to 4× cheaper and 3× faster**, with better or no loss of correctness: it reproduces the real merged PRs by touching the same files the maintainers did. Per-repo detail below.
+Across these repos symgraph runs **up to 4× cheaper and 3× faster**, with better or no loss of correctness: it reproduces the real merged PRs by touching the same files the maintainers did. Per-repo detail below.
 
 ### PocketBase (Go, ~350 files)
 
-| Aggregate over 15 tasks | Standard Claude Code | With graft |
+| Aggregate over 15 tasks | Standard Claude Code | With symgraph |
 |---|---|---|
 | Cost | $13.91 | **$11.02 (−21%)** |
 | Wall-clock | 2,044s | **1,762s (−14%)** |
 | PRs reproduced | 5 / 5 | **5 / 5 (same files as the maintainers)** |
 
-Cheaper and faster with no loss of correctness: graft reproduced all five merged PRs, touching the same files the maintainers did. The gap is widest on cross-file understanding — "how does auth work across OAuth2 providers" dropped from $2.19 to $0.84.
+Cheaper and faster with no loss of correctness: symgraph reproduced all five merged PRs, touching the same files the maintainers did. The gap is widest on cross-file understanding — "how does auth work across OAuth2 providers" dropped from $2.19 to $0.84.
 
 <details>
 <summary><b>The 10 questions we asked</b></summary>
@@ -559,7 +558,7 @@ Cheaper and faster with no loss of correctness: graft reproduced all five merged
 <details>
 <summary><b>The 5 merged PRs we re-implemented</b></summary>
 
-Each PR was reset to its base commit; graft's diff was scored against the files the merged PR changed.
+Each PR was reset to its base commit; symgraph's diff was scored against the files the merged PR changed.
 
 | PR | Type | What it does | Files the maintainers touched |
 |---|---|---|---|
@@ -574,7 +573,7 @@ Each PR was reset to its base commit; graft's diff was scored against the files 
 <details>
 <summary><b>Method</b></summary>
 
-Two clones of PocketBase at the same commit: one wired with `graft init`, one untouched and verified graft-free. Each task run headless (`claude -p`, Claude Opus) with an empty MCP config. Understanding questions were graded by whether the answer pointed to the right files and functions; PR tasks were scored on whether the agent's diff touched the same files as the merged PR. Every transcript was audited to confirm graft was actually used in the graft arm and absent from the standard arm.
+Two clones of PocketBase at the same commit: one wired with `symgraph init`, one untouched and verified symgraph-free. Each task run headless (`claude -p`, Claude Opus) with an empty MCP config. Understanding questions were graded by whether the answer pointed to the right files and functions; PR tasks were scored on whether the agent's diff touched the same files as the merged PR. Every transcript was audited to confirm symgraph was actually used in the symgraph arm and absent from the standard arm.
 
 </details>
 
@@ -583,7 +582,7 @@ Two clones of PocketBase at the same commit: one wired with `graft init`, one un
 ## Development
 
 ```bash
-git clone https://github.com/NanoNets/context-graph-engine.git && cd context-graph-engine
+git clone https://github.com/edrethardo/Graft.git symgraph && cd symgraph
 npm install
 npm run build
 npm test

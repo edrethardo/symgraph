@@ -5,7 +5,7 @@
 # as a lookup when it reads history (`%aN`/`%aE`, `git shortlog`, `git blame`).
 #
 # Every canonical address here is the person's GitHub noreply address, which is
-# what makes them mentionable: `graft blast` reads a handle out of that form and
+# what makes them mentionable: `symgraph blast` reads a handle out of that form and
 # refuses to guess one from anything else, so without a line here a contributor
 # who commits under a personal or work address is printed as plain text a PR
 # author has to tag by hand.

@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.12.0 (symgraph)
+
+The fork's first release under its own name. Version numbers restart from the
+fork's own line (it was `0.11.1-fork.1`). The upstream Graft entries below,
+0.12–0.16 included, describe what was picked into this release; they are not
+symgraph releases of their own.
+
+### Changed
+
+- **Renamed from graft to symgraph.** The npm package is `symgraph` (was
+  `@nanonets/graft`). The CLI is `symgraph`, the MCP server is `symgraph`, and
+  its tools are `symgraph_find_code`, `symgraph_find_all`,
+  `symgraph_trace_calls`, `symgraph_file_api`, `symgraph_repo_map` and
+  `symgraph_check_freshness`. The graph lives in `symgraph/`, local settings
+  in `.symgraph/`, and environment variables are `SYMGRAPH_*`. The Claude Code
+  skill and helpers are `symgraph` / `symgraph-hooks.cjs` /
+  `symgraph-statusline.cjs`, and the instruction-file fences are
+  `<!-- symgraph:start/end -->`.
+- **The update check asks npm about `symgraph`**, never `@nanonets/graft`. It
+  stays silent while that package is unpublished or unreachable.
+
+### Compatibility
+
+- The `graft` command still works. It prints `graft is now symgraph — use
+  \`symgraph …\`` on stderr and runs the same CLI.
+- `GRAFT_*` environment variables (including ones from `.env`) are read when
+  the matching `SYMGRAPH_*` variable is unset.
+- An existing `graft/` graph (and `.graft/` settings) is moved to `symgraph/`
+  (`.symgraph/`) the first time symgraph touches the repo, and the
+  `.gitignore` / `.ignore` entries are renamed with it. It is moved only when
+  the folder holds a graph, and never onto an existing `symgraph/`.
+- `symgraph init` removes graft-era wiring: the `graft` MCP entries (JSON and
+  TOML), `graft-hooks.cjs` / `graft-statusline.cjs` and their settings entries
+  (repo and user level), the `graft` skills, and `<!-- graft:start -->` blocks.
+  `symgraph uninstall` also removes those and a leftover `graft/` cache. Foreign
+  entries are left alone.
+
+### Picked from upstream Graft (0.12–0.16)
+
+- **Languages:** PHP, Clojure, Lua, Nix and R, depth-tier Kotlin and Swift,
+  `.vue` single-file components, Dart top-level symbols, plus Java, TS,
+  Python-constructor and cross-language edge fixes.
+- **CLI:** `symgraph blast` (a diff's blast radius, with who to tag), `symgraph
+  uninstall` and an `init` that converges, `--no-statusline`, `--only-dir`,
+  `--follow-submodules`, opt-in nested clones, and opting out of
+  `.gitignore` / `.ignore` writes.
+- **Hosts:** Antigravity, Hermes and Grok. The Claude Code wiring is also
+  written in `~`, so worktrees keep it.
+- **LLM providers:** LiteLLM and OrcaRouter, plus tolerant tool-call parsing and
+  OpenAI reasoning-model negotiation.
+- **Fixes:** a resumable deep pass, check/drift, ranking and PageRank reuse,
+  and hidden Windows background processes.
+- **Left out on purpose:** telemetry, the Trail/brain cloud integration, the
+  PR-review GitHub App, and the tokens/dollars-saved estimates.
+
 ## Unreleased
 
 ### Added
