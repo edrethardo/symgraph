@@ -172,7 +172,7 @@ export function mergeGraftHooks(existing: Json, helpers: string): { merged: Json
   merged.hooks = { ...(merged.hooks ?? {}) };
   for (const [event, blocks] of Object.entries(graftBlocks(helpers))) {
     const prior = Array.isArray(merged.hooks[event]) ? merged.hooks[event] : [];
-    const foreign = prior.filter((e: Json) => !isGraftEntry(e));
+    const foreign = prior.filter((e: Json) => !isGraftHookEntry(e));
     merged.hooks[event] = [...foreign, ...blocks];
   }
   return { merged };

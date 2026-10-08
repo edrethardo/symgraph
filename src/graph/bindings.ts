@@ -327,14 +327,11 @@ export function resolveRecvType(
     // C++ out-of-class definition bodies (`void Physics::step() { … }`) walk
     // with scope ["Physics.step"], not ["Physics", "step"], so a same-file
     // field binding stored under the class scope needs this second probe.
-    (ctx.lang === "cpp" && ctx.enclosingClass
-      ? (ctx.bindings.lookup([ctx.enclosingClass], receiver) ?? undefined)
-      : undefined) ??
+    (ctx.lang === "cpp" && ctx.enclosingClass ? ctx.bindings.lookup([ctx.enclosingClass], receiver) : undefined) ??
     // Swift type-member call `Animal.staticThing()`: an uppercase receiver with no
     // local binding is the type itself (Swift naming: types are UpperCamelCase,
     // values lowerCamelCase — and a shadowing binding was already tried above).
-    (ctx.lang === "swift" && /^[A-Z]/.test(receiver) ? receiver : undefined) ??
-    undefined
+    (ctx.lang === "swift" && /^[A-Z]/.test(receiver) ? receiver : undefined)
   );
 }
 

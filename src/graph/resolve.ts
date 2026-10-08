@@ -14,7 +14,6 @@
  */
 import { posix } from "node:path";
 import { toPosixPath } from "../util/paths.js";
-import { languageOf } from "./extract.js";
 import type { EdgeV1, Kind, NodeV1, Relation } from "./types.js";
 import { languageOf, type RawEdge } from "./extract.js";
 import { genericLangOf } from "./generic.js";
