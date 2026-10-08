@@ -1472,10 +1472,22 @@ function calleeName(
   }
 
   if (lang === "kotlin") {
-    // `import com.example.Foo` — the dotted path is the `identifier` child. A
-    // wildcard (`import a.b.*`) and an `as` alias are separate children, so the
-    // identifier text is already the module path (wildcards dropped, like Java).
-    return node.namedChildren.find((c) => c.type === "identifier")?.text ?? null;
+    // `call_expression` = callee expression + `call_suffix`. A bare `foo()` names a
+    // plain call; `obj.foo()` is a `navigation_expression` whose trailing
+    // `navigation_suffix` holds the method name and whose object is the receiver.
+    const target = node.namedChildren[0];
+    if (target?.type === "simple_identifier") return { name: target.text, viaMember: false };
+    if (target?.type === "navigation_expression") {
+      const suffix = target.namedChildren.find((c) => c.type === "navigation_suffix");
+      const name = suffix?.namedChildren.find((c) => c.type === "simple_identifier");
+      const receiver = target.namedChildren[0];
+      if (!name) return null;
+      if (receiver?.type === "simple_identifier")
+        return { name: name.text, viaMember: true, receiver: receiver.text };
+      if (receiver?.type === "this_expression" || receiver?.type === "super_expression")
+        return { name: name.text, viaMember: true, receiver: receiver.type === "this_expression" ? "this" : "super" };
+    }
+    return null;
   }
 
   // Shell: a `command` node's callee is its `name` field. Only a name that
