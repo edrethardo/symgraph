@@ -11,7 +11,7 @@ separately patched.
 Please do not open a public GitHub issue for security vulnerabilities.
 
 Report vulnerabilities privately via
-[GitHub Security Advisories](https://github.com/edrethardo/Graft/security/advisories/new),
+[GitHub Security Advisories](https://github.com/edrethardo/symgraph/security/advisories/new),
 on this fork. Issues in code shared with upstream Graft can also be reported
 to [upstream](https://github.com/trailhq/Graft/security/advisories/new).
 

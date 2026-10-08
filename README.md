@@ -582,7 +582,7 @@ Two clones of PocketBase at the same commit: one wired with `symgraph init`, one
 ## Development
 
 ```bash
-git clone https://github.com/edrethardo/Graft.git symgraph && cd symgraph
+git clone https://github.com/edrethardo/symgraph.git && cd symgraph
 npm install
 npm run build
 npm test

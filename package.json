@@ -14,11 +14,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/edrethardo/Graft.git"
+    "url": "git+https://github.com/edrethardo/symgraph.git"
   },
-  "homepage": "https://github.com/edrethardo/Graft#readme",
+  "homepage": "https://github.com/edrethardo/symgraph#readme",
   "bugs": {
-    "url": "https://github.com/edrethardo/Graft/issues"
+    "url": "https://github.com/edrethardo/symgraph/issues"
   },
   "publishConfig": {
     "access": "public"
