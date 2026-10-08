@@ -78,10 +78,10 @@ export interface GraphBuildOptions {
   reuse?: boolean;
   /** Write only what a query reads — the graph, the `ask` sidecar, the freshness
    * record — and skip the markdown projections and the `.gitignore` touch. Set by
-   * the pre-query refresh (`graph/refresh.ts`); an explicit `graft build` never
+   * the pre-query refresh (`graph/refresh.ts`); an explicit `symgraph build` never
    * sets it. See the write block in {@link buildGraph} for why the split exists. */
   graphOnly?: boolean;
-  /** Opt-in compiler-grade edge enrichment via a language server (`graft build
+  /** Opt-in compiler-grade edge enrichment via a language server (`symgraph build
    * --lsp`): adds `lsp_resolved` call edges the AST resolver couldn't (member
    * calls, breadth-tier calls). Off by default — needs a server on PATH and is
    * slower; the graph is fully functional without it. */
@@ -180,7 +180,7 @@ export async function buildGraph(
   const langs = new Set<string>();
   const errors: string[] = [];
 
-  // In a git worktree there is nothing to reuse *yet* — `graft/` is gitignored, so
+  // In a git worktree there is nothing to reuse *yet* — `symgraph/` is gitignored, so
   // git never checked it out — but the parent checkout's graph is one directory away.
   // Copy it in before reading the priors below and this build is incremental and
   // keeps its paid-for summaries, instead of being a cold parse of the whole repo.
@@ -224,10 +224,10 @@ export async function buildGraph(
 
     // Every file is read and hashed, every build — only the *parse* is memoized.
     // The tempting optimization is to trust the probe's `(size, mtimeMs)` and skip
-    // the read too, but then `graft build` inherits the probe's blind spot: on a
+    // the read too, but then `symgraph build` inherits the probe's blind spot: on a
     // filesystem with coarse mtime granularity, a same-length edit inside the same
-    // second is invisible, so `graft check` reports drift (it always re-hashes) and
-    // the `graft build` it tells you to run refuses to repair it — forever. A stat
+    // second is invisible, so `symgraph check` reports drift (it always re-hashes) and
+    // the `symgraph build` it tells you to run refuses to repair it — forever. A stat
     // may decide whether a *query* bothers rebuilding; it may not decide what the
     // rebuild itself looks at. Reading is ~0.05ms/file against the ~4.6ms parse
     // this still skips.
@@ -372,7 +372,7 @@ export async function buildGraph(
   //
   // Skipped entirely on the query path (`graphOnly`). Retrieval answers from
   // wiring.json and the ask sidecar; the markdown surface is for humans and for
-  // the agent's own greps, and it is rebuilt by an explicit `graft build` — which
+  // the agent's own greps, and it is rebuilt by an explicit `symgraph build` — which
   // is what the Claude Code `Stop` hook already runs at the end of a turn. Keeping
   // it off the query path is what makes a refresh cheap, leaves the repo untouched
   // (`ensureGitignored` writes `.gitignore`, which a read has no business doing),

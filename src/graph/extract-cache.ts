@@ -59,12 +59,12 @@ export interface ExtractCache {
 }
 
 /**
- * Where this graft's memo lives: `<outDir>/.cache/extract.<stamp>.json`.
+ * Where this symgraph's memo lives: `<outDir>/.cache/extract.<stamp>.json`.
  *
- * The stamp is in the *filename*, not just inside the file, so two grafts working
+ * The stamp is in the *filename*, not just inside the file, so two symgraphs working
  * on one repo keep separate memos instead of evicting each other. That is the
- * default install, not an exotic case: `graft init` wires the MCP server as
- * `npx -y @nanonets/graft` (which resolves the latest published version) while the
+ * default install, not an exotic case: `symgraph init` wires the MCP server as
+ * `npx -y symgraph` (which resolves the latest published version) while the
  * Claude Code hooks run the locally installed one. The moment those two versions
  * differ, a single shared file means the prompt hook and every MCP retrieval take
  * turns rejecting each other's entries and cold-re-parsing the whole repo — the memo
@@ -123,7 +123,7 @@ let memoizedStamp: string | null | undefined;
  * costs one cold rebuild — which is no more often than a version bump already
  * costs, and always in the safe direction. The package version is folded in so a
  * tree-sitter grammar upgrade (which changes parse output without changing any of
- * graft's own files) invalidates too.
+ * symgraph's own files) invalidates too.
  *
  * Measured at ~0.5ms for 21 files / 556KB, paid once per process.
  *
@@ -177,7 +177,7 @@ export function stampDir(dir: string, ext: string, version = ""): string | null 
   return h.digest("hex").slice(0, 16);
 }
 
-/** graft's own version, or null when it can't be read. */
+/** symgraph's own version, or null when it can't be read. */
 function packageVersion(graphDir: string): string | null {
   try {
     const pkg = JSON.parse(readFileSync(join(graphDir, "..", "..", "package.json"), "utf8")) as { version?: string };
@@ -192,7 +192,7 @@ export function emptyExtractCache(): ExtractCache {
 }
 
 /** The cache for `outDir`, or an empty one when it's absent, unparseable, written by
- * a different cache version, or when this graft has no identity to key on (then
+ * a different cache version, or when this symgraph has no identity to key on (then
  * every build is cold, which is slow but never wrong). The stamp is in the filename,
  * so the `extractor` field is a second check rather than the only one. */
 export function readExtractCache(outDir: string): ExtractCache {

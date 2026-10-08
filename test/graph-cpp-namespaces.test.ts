@@ -56,7 +56,7 @@ void run() {
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-cpp-ns-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-cpp-ns-"));
   writeFileSync(join(dir, "world.cpp"), WORLD_CPP);
   writeFileSync(join(dir, "ai.cpp"), AI_CPP);
   writeFileSync(join(dir, "main.cpp"), MAIN_CPP);
@@ -69,7 +69,7 @@ function makeFixture(): string {
 test("C++ namespaces: ns metadata, qualified calls, same-namespace tiebreak", async () => {
   const dir = makeFixture();
   await buildGraph(dir);
-  const graph: GraphV1 | null = readGraph(wiringPath(join(dir, "graft")));
+  const graph: GraphV1 | null = readGraph(wiringPath(join(dir, "symgraph")));
   assert.ok(graph, "wiring graph should be written");
 
   // nodes carry their namespace path

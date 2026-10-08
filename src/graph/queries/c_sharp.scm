@@ -1,6 +1,6 @@
 ; C# tags — minimal, matched to the tree-sitter-wasms c_sharp grammar node types.
 ; (Upstream tree-sitter-c-sharp tags.scm references node types the bundled wasm
-;  grammar version lacks — "Bad node name 'type'" — so graft ships this instead.)
+;  grammar version lacks — "Bad node name 'type'" — so symgraph ships this instead.)
 
 (class_declaration name: (identifier) @name) @definition.class
 (interface_declaration name: (identifier) @name) @definition.interface

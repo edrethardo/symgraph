@@ -1,6 +1,6 @@
 /**
  * Tests for R Phase 2 (S3/S4/R6-aware) extraction. R's class systems are
- * library *convention*, not grammar syntax — unlike every other language graft
+ * library *convention*, not grammar syntax — unlike every other language symgraph
  * supports — so this is "pattern-match known call idioms -> sometimes a kind"
  * rather than "one grammar construct -> one graph kind". Three separate risk
  * areas, three separate fixtures: R6's public=/private=/active= list-walking
@@ -22,10 +22,10 @@ function nodeById(graph: GraphV1, id: string): NodeV1 | undefined {
 }
 
 async function buildAndRead(files: Record<string, string>): Promise<{ dir: string; graph: GraphV1 }> {
-  const dir = mkdtempSync(join(tmpdir(), "graft-r-classes-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-r-classes-"));
   for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content);
   await buildGraph(dir);
-  const graph = readGraph(wiringPath(join(dir, "graft")))!;
+  const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
   return { dir, graph };
 }
 

@@ -1,25 +1,25 @@
 /**
- * The user-level Claude Code install — graft's wiring outside any repo.
+ * The user-level Claude Code install — symgraph's wiring outside any repo.
  *
  * The bug it exists for, reported against a real repo: `.gitignore` line 1 was a
  * blanket `*.json`, which ignores both `.mcp.json` and `.claude/settings.json`.
  * `git worktree add` checks out tracked files only, so every worktree of that repo
- * started with graft's `.cjs` shims present and neither of the two files that point
- * at them — no SessionStart hook, no MCP server, graft silently absent in a tree
+ * started with symgraph's `.cjs` shims present and neither of the two files that point
+ * at them — no SessionStart hook, no MCP server, symgraph silently absent in a tree
  * that looked correctly wired. The first test here drives real `git init` /
  * `git worktree add` rather than faking it, because the whole failure lives in what
  * git chooses to carry across.
  *
  * The rest hold the two properties that keep the fix safe to ship: nothing lands in
- * `~` when `--no-global` is passed, and `graft uninstall` removes exactly what an
+ * `~` when `--no-global` is passed, and `symgraph uninstall` removes exactly what an
  * init added.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 // Pin the MCP launch command to the npx form so expectations don't depend on
-// whether the machine running the tests has graft on PATH.
-process.env.GRAFT_MCP_NPX = '1';
+// whether the machine running the tests has symgraph on PATH.
+process.env.SYMGRAPH_MCP_NPX = '1';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -43,16 +43,16 @@ const git = (d: string, ...args: string[]): void => {
       ...process.env,
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_SYSTEM: '/dev/null',
-      GIT_AUTHOR_NAME: 'graft test',
+      GIT_AUTHOR_NAME: 'symgraph test',
       GIT_AUTHOR_EMAIL: 'test@example.invalid',
-      GIT_COMMITTER_NAME: 'graft test',
+      GIT_COMMITTER_NAME: 'symgraph test',
       GIT_COMMITTER_EMAIL: 'test@example.invalid',
     },
   });
 };
 
 const settingsOf = (home: string): string => join(home, '.claude', 'settings.json');
-const shimOf = (home: string): string => join(globalHelpersDir(home), 'graft-hooks.cjs');
+const shimOf = (home: string): string => join(globalHelpersDir(home), 'symgraph-hooks.cjs');
 const userMcpOf = (home: string): string => join(home, '.claude.json');
 
 const readJson = (p: string): Record<string, any> => JSON.parse(readFileSync(p, 'utf8'));
@@ -67,7 +67,7 @@ function repoIgnoringJson(): string {
   git(d, 'init', '-b', 'main');
   mkdirSync(join(d, 'src'), { recursive: true });
   writeFileSync(join(d, 'src', 'math.ts'), 'export const add = (a: number, b: number) => a + b;\n');
-  writeFileSync(join(d, '.gitignore'), '*.json\ngraft/\n');
+  writeFileSync(join(d, '.gitignore'), '*.json\nsymgraph/\n');
   return d;
 }
 
@@ -93,7 +93,7 @@ test('a worktree of a repo that ignores *.json loses both repo-level triggers', 
   git(main, 'worktree', 'add', '--detach', wt, 'HEAD');
 
   // The shim travels (it's a .cjs). The two files that call it do not.
-  assert.ok(existsSync(join(wt, '.claude', 'helpers', 'graft-hooks.cjs')), 'the .cjs shim is tracked');
+  assert.ok(existsSync(join(wt, '.claude', 'helpers', 'symgraph-hooks.cjs')), 'the .cjs shim is tracked');
   assert.equal(existsSync(join(wt, '.mcp.json')), false, 'no MCP server in the worktree');
   assert.equal(existsSync(join(wt, '.claude', 'settings.json')), false, 'no SessionStart hook either');
 
@@ -101,7 +101,7 @@ test('a worktree of a repo that ignores *.json loses both repo-level triggers', 
   // reaches it, and Claude Code reads it for every project including this one.
   assert.ok(existsSync(shimOf(home)));
   assert.ok(readJson(settingsOf(home)).hooks?.SessionStart, 'user-level SessionStart hook');
-  assert.ok(readJson(userMcpOf(home)).mcpServers?.graft, 'user-scope MCP registration');
+  assert.ok(readJson(userMcpOf(home)).mcpServers?.symgraph, 'user-scope MCP registration');
 });
 
 test('the user-level hook commands name the shim absolutely, not via CLAUDE_PROJECT_DIR', () => {
@@ -120,7 +120,7 @@ test('the user-level hook commands name the shim absolutely, not via CLAUDE_PROJ
  * safe to run on someone's real home directory
  * ------------------------------------------------------------------ */
 
-test('an existing settings.json keeps every key graft does not own', () => {
+test('an existing settings.json keeps every key symgraph does not own', () => {
   const home = tmpRepo('cgkeep');
   mkdirSync(join(home, '.claude'), { recursive: true });
   writeFileSync(settingsOf(home), JSON.stringify({ theme: 'light', effortLevel: 'high' }, null, 2));
@@ -144,7 +144,7 @@ test('an existing user-scope MCP server survives, and re-running converges', () 
   installClaudeGlobal(home);
   const first = readJson(userMcpOf(home));
   assert.ok(first.mcpServers.paper, 'a foreign server is preserved');
-  assert.ok(first.mcpServers.graft);
+  assert.ok(first.mcpServers.symgraph);
 
   const second = installClaudeGlobal(home);
   assert.ok(second.every((w) => w.action === 'unchanged'), `idempotent, got ${JSON.stringify(second)}`);
@@ -207,10 +207,10 @@ test('uninstall removes exactly what the global install added', () => {
 
   assert.equal(existsSync(shimOf(home)), false, 'shim gone');
   const s = readJson(settingsOf(home));
-  assert.equal(s.hooks, undefined, 'graft hooks gone');
+  assert.equal(s.hooks, undefined, 'symgraph hooks gone');
   assert.equal(s.theme, 'light', "the user's own settings survive");
   const mcp = readJson(userMcpOf(home));
-  assert.equal(mcp.mcpServers.graft, undefined, 'graft server gone');
+  assert.equal(mcp.mcpServers.symgraph, undefined, 'symgraph server gone');
   assert.ok(mcp.mcpServers.paper, 'the foreign server survives');
 });
 

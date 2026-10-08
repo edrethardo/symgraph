@@ -20,7 +20,7 @@ import { join } from "node:path";
 const root = process.argv[2];
 
 await buildGraph(root, { reuse: false });
-const graph = readGraph(wiringPath(join(root, "graft")));
+const graph = readGraph(wiringPath(join(root, "symgraph")));
 const edges = (graph?.edges ?? [])
   .filter((edge) => edge.target === "src/dep.ts#target")
   .map(({ source, relation }) => ({ source, relation }));

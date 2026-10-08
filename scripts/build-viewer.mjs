@@ -1,7 +1,7 @@
 /**
  * Bundles the viewer into dist/viewer/ (app.js via esbuild + copied static
  * assets). Runs as part of `npm run build`; the bundle ships in the package
- * so `graft viz` needs no install or build step at runtime.
+ * so `symgraph viz` needs no install or build step at runtime.
  */
 import { build } from "esbuild";
 import { mkdirSync, copyFileSync, readdirSync } from "node:fs";

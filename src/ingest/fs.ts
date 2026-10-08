@@ -35,11 +35,11 @@ export const MAX_FILE_BYTES = 1_000_000;
  * git-child discovery in `graph/scopes.ts` share it, so they can never
  * independently drift on what counts as skippable.
  *
- * `includes` is the explicit, per-repo `graft build --include-dir` override
+ * `includes` is the explicit, per-repo `symgraph build --include-dir` override
  * (persisted via `util/state.ts`'s `readIncludeDirs`, threaded in by each
  * caller) — a name in it is removed from the effective skip set for THIS
  * repo's walks. Absent/empty ≡ today's default behavior. It lifts only
- * graft's own skip list: in a Git repo, Git's ignore rules stay authoritative
+ * symgraph's own skip list: in a Git repo, Git's ignore rules stay authoritative
  * (see {@link walkDir}).
  *
  * KNOWN LIMITATION: a dot-directory is skipped WHOLESALE and is NEVER
@@ -164,7 +164,7 @@ export function walkDir(
 
 /** Git's canonical working-tree file set, relative to `dir`. Tracked files are
  * deliberately included even when a later ignore rule matches them; `.gitignore`
- * only controls untracked files in Git, and graft follows the same contract. */
+ * only controls untracked files in Git, and symgraph follows the same contract. */
 function gitVisibleFiles(
   dir: string,
   includes?: ReadonlySet<string>,

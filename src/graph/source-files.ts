@@ -15,7 +15,7 @@ import { languageOf, depthExtensions } from "./extract.js";
 import { genericLangOf, genericExtensions } from "./generic.js";
 import { containerLangOf, containerExtensions } from "./container.js";
 
-/** Every extension graft has a parser for (depth + breadth + container), sorted
+/** Every extension symgraph has a parser for (depth + breadth + container), sorted
  * and de-duped — the authoritative answer to "what does `-e` actually support". */
 export function supportedExtensions(): string[] {
   return [...new Set([...depthExtensions(), ...genericExtensions(), ...containerExtensions()])].sort();
@@ -29,7 +29,7 @@ function normExt(e: string): string {
 
 /**
  * The subset of user-supplied `-e` extensions that no parser claims (depth or breadth).
- * `graft build -e ".vue"` used to accept these silently and index nothing; the CLI warns
+ * `symgraph build -e ".vue"` used to accept these silently and index nothing; the CLI warns
  * on whatever this returns so an unsupported extension is never a quiet no-op.
  */
 export function unsupportedExtensions(exts: string[]): string[] {

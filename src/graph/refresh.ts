@@ -2,7 +2,7 @@
  * `ensureFreshGraph` — the pre-query gate that keeps retrieval honest.
  *
  * Freshness used to be someone else's job: the Claude Code `Stop` hook spawned a
- * background `graft build` *after* the turn ended, so every query an agent made
+ * background `symgraph build` *after* the turn ended, so every query an agent made
  * between its first edit and the end of the turn answered from a graph that no
  * longer matched the file it had just changed. Worse, an edit made outside the
  * agent (your editor, a branch switch, a stash) set no `dirty` flag at all, so
@@ -16,18 +16,18 @@
  *   money guard `claude/sync-run.ts` carries: auto-anything must not spend money.
  * - **Never fatal.** A failed refresh degrades to answering from the graph on
  *   disk. A query that works today must not start failing because a rebuild did.
- * - **Never a stampede.** It takes the same `graft/.cache/.sync.lock` the
+ * - **Never a stampede.** It takes the same `symgraph/.cache/.sync.lock` the
  *   background sync uses, so concurrent MCP calls and the Stop hook can't pile up
  *   rebuilds on top of each other.
  * - **Writes only what a query reads** (`graphOnly`): the graph, the `ask` sidecar,
  *   the freshness record. Not the markdown cards, not `INDEX.md`, not `.gitignore`.
- *   Those belong to an explicit `graft build` — which the `Stop` hook already runs
+ *   Those belong to an explicit `symgraph build` — which the `Stop` hook already runs
  *   at the end of a turn — so retrieval stays cheap and a read stays a read. It
  *   also leaves `stats.json` alone, so that same `Stop` hook still sees `dirty` and
  *   still rebuilds the passive surface.
  *
  * One case is not drift but absence: inside a git worktree there is no graph at all,
- * because `graft/` is gitignored and so was never checked out. The gate covers that
+ * because `symgraph/` is gitignored and so was never checked out. The gate covers that
  * too — it copies the parent checkout's graph in (`./seed.ts`) and then treats the
  * difference between the two checkouts as ordinary drift, which is exactly what it is.
  */
@@ -67,7 +67,7 @@ const CLEAN: RefreshResult = { refreshed: false };
 
 /** Env kill switch, for CI or anyone who wants queries to never write. */
 function envDisabled(): boolean {
-  const v = process.env.GRAFT_NO_REFRESH;
+  const v = process.env.SYMGRAPH_NO_REFRESH;
   return v !== undefined && v !== "" && v !== "0" && v !== "false";
 }
 
@@ -79,7 +79,7 @@ function sleep(ms: number): Promise<void> {
  * Release the lock if this process is asked to die while holding it. Returns the
  * un-hook.
  *
- * Not hypothetical: the Claude Code prompt hook runs `graft ask` with a timeout, and
+ * Not hypothetical: the Claude Code prompt hook runs `symgraph ask` with a timeout, and
  * `execFileSync` enforces it with SIGTERM. Node's default disposition for SIGTERM is
  * to exit without unwinding, so the `finally` below never runs and the lock outlives
  * the process — after which the background sync is blocked and every query waits and
@@ -155,16 +155,16 @@ export async function ensureFreshGraph(root: string, opts: RefreshOptions = {}):
     let seededFrom: string | undefined;
     if (!existsSync(wiringPath(outDir))) {
       // One case has a graph to work with even though this checkout has none: a git
-      // worktree, whose parent checkout's `graft/` git could not check out. Copy it
+      // worktree, whose parent checkout's `symgraph/` git could not check out. Copy it
       // in and carry on — the drift below is then exactly the diff between the two
       // checkouts, and repairing it is what makes the copied graph honest here.
       const seed = await seedUnderLock(dir, outDir, opts.contextDir);
       seededFrom = seed.from;
       // Still nothing (not a worktree, parent never built, or a concurrent seed we
       // lost the race for and which we now re-check for): the caller's own "no graph
-      // — run graft build" message is the right answer. Auto-building a whole repo
+      // — run symgraph build" message is the right answer. Auto-building a whole repo
       // under a query is a surprise, and it's the one case where the user hasn't
-      // opted into graft at all yet.
+      // opted into symgraph at all yet.
       if (!existsSync(wiringPath(outDir))) {
         return seed.busy
           ? { refreshed: false, note: "another process is still copying the graph into this worktree — retry the query in a moment" }
@@ -179,7 +179,7 @@ export async function ensureFreshGraph(root: string, opts: RefreshOptions = {}):
     const drift = probeDrift(dir, outDir);
     if (drift && isClean(drift)) return seedNote ? { refreshed: false, note: seedNote } : CLEAN;
 
-    // On the default layout this is `<root>/graft/.cache/.sync.lock`, the very file
+    // On the default layout this is `<root>/symgraph/.cache/.sync.lock`, the very file
     // the Claude Code hooks lock — so this refresh and the background sync can
     // never rebuild at the same time.
     const lockCache = join(outDir, CACHE_DIR);
@@ -206,7 +206,7 @@ export async function ensureFreshGraph(root: string, opts: RefreshOptions = {}):
       }
       // Tier-1 only: no summarizer, so no LLM call and no network, ever. And
       // `graphOnly`: write the graph, the ask sidecar and the fingerprint, nothing
-      // else. The markdown projections under `graft/` stay the `Stop` hook's job —
+      // else. The markdown projections under `symgraph/` stay the `Stop` hook's job —
       // a query has no business rewriting the repo's `.gitignore` or churning every
       // card's mtime, and skipping them is most of what keeps this cheap.
       // A `--only-dir` build recorded its whitelist in the fingerprint; re-apply it
@@ -246,7 +246,7 @@ export async function ensureFreshChildren(
     // every child at the *parent's* context dir — which holds a workspace index and
     // no wiring.json, so every child would silently be skipped. (And if it did hold
     // one, each child would build into that single shared dir in turn, the last
-    // clobbering the rest.) A child's graph always lives in its own `<child>/graft`,
+    // clobbering the rest.) A child's graph always lives in its own `<child>/symgraph`,
     // which is exactly how `loadWorkspaceGraphs` reads them back.
     const r = await ensureFreshGraph(resolve(root, child), { disabled: opts.disabled });
     if (!r.refreshed) continue;
@@ -263,11 +263,11 @@ export async function ensureFreshChildren(
 /** The one-line note a CLI/MCP surface prints when a refresh actually happened.
  * Null when there's nothing to say (the overwhelmingly common case). */
 export function refreshNote(r: RefreshResult): string | null {
-  if (!r.refreshed) return r.note ? `[graft] ${r.note}` : null;
+  if (!r.refreshed) return r.note ? `[symgraph] ${r.note}` : null;
   const n = r.drift ? driftCount(r.drift) : 0;
   const built = `refreshed the graph (${n || "?"} file${n === 1 ? "" : "s"} changed) before answering`;
   // Both facts, when a worktree was seeded *and* the copy needed repairing: the
   // count is the interesting half (it's the branch diff), the provenance explains
   // where a graph came from in a directory the user knows they never built.
-  return r.note ? `[graft] ${built} — ${r.note}` : `[graft] ${built}`;
+  return r.note ? `[symgraph] ${built} — ${r.note}` : `[symgraph] ${built}`;
 }

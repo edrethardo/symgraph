@@ -74,7 +74,7 @@ function familyOf(path: string): string | null {
  * Could a reference in `file` reach a definition in `candidatePath`?
  *
  * An unknown family never filters: absence of data is not evidence of a mismatch,
- * and refusing edges for every extension graft cannot name would lose real ones.
+ * and refusing edges for every extension symgraph cannot name would lose real ones.
  */
 function reachable(file: string, candidatePath: string): boolean {
   const from = familyOf(file);

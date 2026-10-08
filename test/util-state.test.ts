@@ -22,7 +22,7 @@ import {
 } from "../src/util/state.js";
 
 function fresh(): string {
-  return mkdtempSync(join(tmpdir(), "graft-buildconfig-"));
+  return mkdtempSync(join(tmpdir(), "symgraph-buildconfig-"));
 }
 
 test("readBuildConfig returns null when nothing was ever persisted", () => {
@@ -36,9 +36,9 @@ test("writeBuildConfig + readBuildConfig round-trip includeDirs", () => {
   const d = fresh();
   writeBuildConfig(d, { includeDirs: ["build", "vendor"] });
   assert.deepEqual(readBuildConfig(d), { includeDirs: ["build", "vendor"] });
-  assert.equal(buildConfigPath(d), join(d, ".graft", "config.json"));
-  assert.equal(existsSync(join(d, "graft", ".cache", "config.json")), false);
-  assert.match(readFileSync(join(d, ".gitignore"), "utf8"), /^\/\.graft\/$/m);
+  assert.equal(buildConfigPath(d), join(d, ".symgraph", "config.json"));
+  assert.equal(existsSync(join(d, "symgraph", ".cache", "config.json")), false);
+  assert.match(readFileSync(join(d, ".gitignore"), "utf8"), /^\/\.symgraph\/$/m);
 });
 
 test("readIncludeDirs turns a persisted list into a Set; an empty persisted list reads as undefined (default behavior)", () => {
@@ -82,40 +82,40 @@ test("patchBuildConfig preserves unrelated persisted build choices", () => {
   });
 });
 
-// ── resolveContextDir / GRAFT_DIR ──────────────────────────────────────────
+// ── resolveContextDir / SYMGRAPH_DIR ──────────────────────────────────────────
 //
 // Everything in this module keyed only by a project dir (stats cache, sync
-// lock, session state, the upkeep stamp) resolves its `graft/` subpath
-// through resolveContextDir, so hooks/sync-run/statusline honor GRAFT_DIR
+// lock, session state, the upkeep stamp) resolves its `symgraph/` subpath
+// through resolveContextDir, so hooks/sync-run/statusline honor SYMGRAPH_DIR
 // the same way a direct `--dir` CLI call already does via contextDirFor.
 
-function withGraftDir<T>(value: string | undefined, fn: () => T): T {
-  const prev = process.env.GRAFT_DIR;
-  if (value === undefined) delete process.env.GRAFT_DIR; else process.env.GRAFT_DIR = value;
+function withSymgraphDir<T>(value: string | undefined, fn: () => T): T {
+  const prev = process.env.SYMGRAPH_DIR;
+  if (value === undefined) delete process.env.SYMGRAPH_DIR; else process.env.SYMGRAPH_DIR = value;
   try { return fn(); }
-  finally { if (prev === undefined) delete process.env.GRAFT_DIR; else process.env.GRAFT_DIR = prev; }
+  finally { if (prev === undefined) delete process.env.SYMGRAPH_DIR; else process.env.SYMGRAPH_DIR = prev; }
 }
 
-test("resolveContextDir defaults to <projectDir>/graft when GRAFT_DIR is unset", () => {
+test("resolveContextDir defaults to <projectDir>/symgraph when SYMGRAPH_DIR is unset", () => {
   const d = fresh();
-  withGraftDir(undefined, () => {
-    assert.equal(resolveContextDir(d), join(d, "graft"));
-    assert.equal(cacheDir(d), join(d, "graft", ".cache"));
+  withSymgraphDir(undefined, () => {
+    assert.equal(resolveContextDir(d), join(d, "symgraph"));
+    assert.equal(cacheDir(d), join(d, "symgraph", ".cache"));
   });
 });
 
-test("resolveContextDir resolves a relative GRAFT_DIR against projectDir", () => {
+test("resolveContextDir resolves a relative SYMGRAPH_DIR against projectDir", () => {
   const d = fresh();
-  withGraftDir(".repo-docs/graft", () => {
-    assert.equal(resolveContextDir(d), join(d, ".repo-docs", "graft"));
-    assert.equal(cacheDir(d), join(d, ".repo-docs", "graft", ".cache"));
+  withSymgraphDir(".repo-docs/symgraph", () => {
+    assert.equal(resolveContextDir(d), join(d, ".repo-docs", "symgraph"));
+    assert.equal(cacheDir(d), join(d, ".repo-docs", "symgraph", ".cache"));
   });
 });
 
-test("resolveContextDir takes an absolute GRAFT_DIR verbatim", () => {
+test("resolveContextDir takes an absolute SYMGRAPH_DIR verbatim", () => {
   const d = fresh();
-  const abs = join(tmpdir(), "graft-context-elsewhere");
-  withGraftDir(abs, () => {
+  const abs = join(tmpdir(), "symgraph-context-elsewhere");
+  withSymgraphDir(abs, () => {
     assert.equal(resolveContextDir(d), abs);
     assert.equal(cacheDir(d), join(abs, ".cache"));
   });

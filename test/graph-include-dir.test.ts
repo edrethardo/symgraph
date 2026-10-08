@@ -1,9 +1,9 @@
 /**
- * A5 — `graft build --include-dir <name>` end-to-end through the real CLI.
+ * A5 — `symgraph build --include-dir <name>` end-to-end through the real CLI.
  *
  * SKIP_DIRS eats real source in some ecosystems (e.g. a build/ directory that
  * genuinely holds hand-written code). This is the explicit, persisted
- * override: no git-awareness (graft's documented no-git invariant), just a
+ * override: no git-awareness (symgraph's documented no-git invariant), just a
  * per-repo state file that later no-flag builds — and the fingerprint probe,
  * which never sees CLI flags at all — read identically.
  */
@@ -18,7 +18,7 @@ import { probeDrift, isClean } from "../src/graph/fingerprint.js";
 import type { GraphV1 } from "../src/graph/types.js";
 
 function repoWithBuildDir(): string {
-  const d = mkdtempSync(join(tmpdir(), "graft-include-dir-"));
+  const d = mkdtempSync(join(tmpdir(), "symgraph-include-dir-"));
   mkdirSync(join(d, "build"), { recursive: true });
   writeFileSync(join(d, "build", "util.ts"), "export function fromBuild(): number {\n  return 1;\n}\n");
   writeFileSync(join(d, "main.ts"), "export function main(): number {\n  return 2;\n}\n");
@@ -30,7 +30,7 @@ function runCli(args: string[]): void {
 }
 
 /** Like {@link runCli}, but captures a non-zero exit instead of throwing —
- * for the --include-dir validation tests, which expect `graft build` to
+ * for the --include-dir validation tests, which expect `symgraph build` to
  * reject bad input rather than run to completion. */
 function runCliCapture(args: string[]): { stdout: string; stderr: string; status: number } {
   try {
@@ -46,7 +46,7 @@ function runCliCapture(args: string[]): { stdout: string; stderr: string; status
 }
 
 function graphOf(d: string): GraphV1 | null {
-  return readGraph(wiringPath(join(d, "graft")));
+  return readGraph(wiringPath(join(d, "symgraph")));
 }
 
 test("A5: build/ is absent by default, present with --include-dir build, persists across a no-flag rebuild, and the fingerprint probe agrees (no drift loop)", () => {
@@ -78,21 +78,21 @@ test("A5: build/ is absent by default, present with --include-dir build, persist
   // The fingerprint probe (the fast path `ensureFreshGraph`/hooks use, which
   // never sees CLI flags) must read the same persisted include set — so it
   // recognizes build/util.ts as already-tracked, not perpetually "added".
-  const drift = probeDrift(d, join(d, "graft"));
+  const drift = probeDrift(d, join(d, "symgraph"));
   assert.ok(drift, "expected a fingerprint to probe against");
   assert.ok(isClean(drift!), `probe must report clean, got ${JSON.stringify(drift)}`);
 });
 
-test("A5: deleting the generated graft cache does not delete the persisted include-dir setting", () => {
+test("A5: deleting the generated symgraph cache does not delete the persisted include-dir setting", () => {
   const d = repoWithBuildDir();
   try {
     runCli(["build", d, "--include-dir", "build"]);
-    rmSync(join(d, "graft"), { recursive: true, force: true });
+    rmSync(join(d, "symgraph"), { recursive: true, force: true });
 
     runCli(["build", d]);
     const rebuilt = graphOf(d);
     assert.ok(rebuilt?.nodes.some((n) => n.id === "build/util.ts#fromBuild"));
-    assert.equal(existsSync(join(d, ".graft", "config.json")), true);
+    assert.equal(existsSync(join(d, ".symgraph", "config.json")), true);
   } finally {
     rmSync(d, { recursive: true, force: true });
   }
@@ -100,15 +100,15 @@ test("A5: deleting the generated graft cache does not delete the persisted inclu
 
 test("A5: custom --dir builds keep repository config outside both output directories", () => {
   const d = repoWithBuildDir();
-  const out = mkdtempSync(join(tmpdir(), "graft-include-dir-output-"));
+  const out = mkdtempSync(join(tmpdir(), "symgraph-include-dir-output-"));
   try {
-    writeFileSync(join(d, "graft"), "a regular file that must not receive config\n");
+    writeFileSync(join(d, "symgraph"), "a regular file that must not receive config\n");
     runCli(["--dir", out, "build", d, "--include-dir", "build"]);
 
     const graph = readGraph(wiringPath(out));
     assert.ok(graph?.nodes.some((n) => n.id === "build/util.ts#fromBuild"));
-    assert.equal(existsSync(join(d, ".graft", "config.json")), true);
-    assert.equal(existsSync(join(d, "graft", ".cache", "config.json")), false);
+    assert.equal(existsSync(join(d, ".symgraph", "config.json")), true);
+    assert.equal(existsSync(join(d, "symgraph", ".cache", "config.json")), false);
     assert.equal(existsSync(join(out, ".cache", "config.json")), false);
   } finally {
     rmSync(d, { recursive: true, force: true });
@@ -130,7 +130,7 @@ test("A5: --include-dir rejects a dot-prefixed name", () => {
     assert.equal(r.status, 1, `expected exit 1, got ${r.status}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
     assert.match(r.stderr, /--include-dir/);
     assert.match(r.stderr, /\.github/);
-    assert.equal(existsSync(join(d, ".graft", "config.json")), false, "must not persist an invalid value");
+    assert.equal(existsSync(join(d, ".symgraph", "config.json")), false, "must not persist an invalid value");
   } finally {
     rmSync(d, { recursive: true, force: true });
   }
@@ -143,7 +143,7 @@ test("A5: --include-dir rejects a value containing a path separator", () => {
     assert.equal(r.status, 1, `expected exit 1, got ${r.status}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
     assert.match(r.stderr, /--include-dir/);
     assert.match(r.stderr, /foo\/bar/);
-    assert.equal(existsSync(join(d, ".graft", "config.json")), false, "must not persist an invalid value");
+    assert.equal(existsSync(join(d, ".symgraph", "config.json")), false, "must not persist an invalid value");
   } finally {
     rmSync(d, { recursive: true, force: true });
   }

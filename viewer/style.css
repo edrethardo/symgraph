@@ -1,5 +1,5 @@
-/* graft viz — design tokens + app styles.
-   Visual reference of record: docs/superpowers/specs/2026-07-15-graft-viz-design.md */
+/* symgraph viz — design tokens + app styles.
+   Visual reference of record: docs/superpowers/specs/2026-07-15-symgraph-viz-design.md */
 :root{
   --bg:#F4F6F6; --panel:#FFFFFF; --panel2:#FBFCFC; --ink:#17191B; --muted:#6B7278;
   --border:#E2E6E7; --border2:#EDF0F1; --accent:#546FFF; --accent-ink:#546FFF;

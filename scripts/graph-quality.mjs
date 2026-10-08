@@ -1,5 +1,5 @@
 /**
- * Graph-quality report + invariant check for a built graph (`graft/.graph/wiring.json`).
+ * Graph-quality report + invariant check for a built graph (`symgraph/.graph/wiring.json`).
  *
  *   node scripts/graph-quality.mjs <repo-dir-or-wiring.json> [--json] [--strict]
  *
@@ -24,8 +24,8 @@ const arg = process.argv[2] ?? ".";
 const json = process.argv.includes("--json");
 const strict = process.argv.includes("--strict");
 const wpath = arg.endsWith(".json") ? arg
-  : [join(arg, "graft", ".graph", "wiring.json"), join(arg, "graft", "wiring.json")].find(existsSync);
-if (!wpath || !existsSync(wpath)) { console.error(`no graph found at ${arg} (run \`graft build\` first)`); process.exit(2); }
+  : [join(arg, "symgraph", ".graph", "wiring.json"), join(arg, "symgraph", "wiring.json")].find(existsSync);
+if (!wpath || !existsSync(wpath)) { console.error(`no graph found at ${arg} (run \`symgraph build\` first)`); process.exit(2); }
 
 const g = JSON.parse(readFileSync(wpath, "utf8"));
 const nodes = g.nodes ?? [], edges = g.edges ?? [];

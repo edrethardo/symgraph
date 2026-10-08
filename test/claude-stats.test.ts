@@ -31,14 +31,14 @@ test('computeStats tolerates missing meta by counting arrays', () => {
   assert.equal(s.readyCount, 0);
 });
 
-test('readWiring reads from a GRAFT_DIR-relocated context dir instead of <projectDir>/graft', () => {
-  const d = mkdtempSync(join(tmpdir(), 'graft-stats-dir-'));
+test('readWiring reads from a SYMGRAPH_DIR-relocated context dir instead of <projectDir>/symgraph', () => {
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-stats-dir-'));
   mkdirSync(join(d, 'elsewhere', '.graph'), { recursive: true });
   writeFileSync(join(d, 'elsewhere', '.graph', 'wiring.json'), JSON.stringify(wiring));
-  process.env.GRAFT_DIR = 'elsewhere';
+  process.env.SYMGRAPH_DIR = 'elsewhere';
   try {
     assert.deepEqual(readWiring(d), wiring);
   } finally {
-    delete process.env.GRAFT_DIR;
+    delete process.env.SYMGRAPH_DIR;
   }
 });

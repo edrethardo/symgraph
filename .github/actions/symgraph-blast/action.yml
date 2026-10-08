@@ -1,6 +1,6 @@
-name: graft blast radius
+name: symgraph blast radius
 description: >-
-  Index the repository with graft, work out what the pull request's diff can
+  Index the repository with symgraph, work out what the pull request's diff can
   affect and who has worked on it, and post that on the PR as one sticky comment
   with a Mermaid diagram.
   Requires a checkout with `fetch-depth: 0` — the diff is taken against the merge
@@ -20,8 +20,8 @@ inputs:
     default: "2"
   name-areas:
     description: >-
-      Name the affected areas with one cached LLM call (`graft blast --name`). Needs
-      GRAFT_API_KEY; without one every area is named after its hub symbol, which is
+      Name the affected areas with one cached LLM call (`symgraph blast --name`). Needs
+      SYMGRAPH_API_KEY; without one every area is named after its hub symbol, which is
       still a name a reviewer can grep. This replaces `build --deep` on the PR path:
       summarising every file in the repo to label six clusters cost ~356 calls and
       thirteen minutes per run.
@@ -48,7 +48,7 @@ inputs:
   export-viewer:
     description: >-
       Write the standalone viewer for this PR's radius to this directory
-      (`graft blast --export-viz`). Empty skips the export. Publishing it is the
+      (`symgraph blast --export-viz`). Empty skips the export. Publishing it is the
       caller's job — see blast-pages.yml.
     required: false
     default: ""
@@ -56,18 +56,18 @@ inputs:
     description: "Token used to post the comment. Needs `pull-requests: write` permission."
     required: false
     default: ${{ github.token }}
-  graft-cmd:
+  symgraph-cmd:
     description: >-
-      How to invoke graft. The default installs the published CLI, which is what any
-      repo consuming this action wants. graft's OWN workflow overrides it with a
+      How to invoke symgraph. The default installs the published CLI, which is what any
+      repo consuming this action wants. symgraph's OWN workflow overrides it with a
       locally built binary (see setup-cmd) so a PR's comment is produced by the code
       in that PR — otherwise this action would review new work with the last release,
       which cannot run a command the release does not have yet.
     required: false
-    default: npx --yes @nanonets/graft@latest
+    default: npx --yes symgraph@latest
   setup-cmd:
     description: >-
-      Command run before graft, for the locally-built case (e.g. `npm ci && npm run
+      Command run before symgraph, for the locally-built case (e.g. `npm ci && npm run
       build`). Empty by default.
     required: false
     default: ""
@@ -82,7 +82,7 @@ runs:
   steps:
     # No checkout here on purpose: checkout policy belongs to the calling workflow
     # (ref, submodules, credentials), and doing it twice would silently discard
-    # whatever the caller had set up. A missing merge base is reported by `graft
+    # whatever the caller had set up. A missing merge base is reported by `symgraph
     # blast` itself, naming `fetch-depth: 0` as the fix.
     - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
@@ -95,16 +95,16 @@ runs:
         SETUP_CMD: ${{ inputs.setup-cmd }}
       run: bash -c "$SETUP_CMD"
 
-    # graft/ is git-ignored (it is a local cache), so the only place a name can
+    # symgraph/ is git-ignored (it is a local cache), so the only place a name can
     # survive between runs is GitHub's cache. Restore-only here: a cache saved by a
     # PR job is scoped to that PR's branch and no other PR could read it, so the
     # useful entry is always the one a push-to-main job saved (see blast-cache.yml).
     - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
-        path: graft
-        key: graft-${{ github.event.pull_request.base.sha }}
+        path: symgraph
+        key: symgraph-${{ github.event.pull_request.base.sha }}
         restore-keys: |
-          graft-
+          symgraph-
 
     - name: Build the graph
       id: build
@@ -113,13 +113,13 @@ runs:
       # inside the shell text: a branch name is attacker-controllable on a fork PR,
       # and inline interpolation is how that becomes command injection.
       env:
-        GRAFT: ${{ inputs.graft-cmd }}
+        SYMGRAPH: ${{ inputs.symgraph-cmd }}
       run: |
         set -uo pipefail
         # Structural only: ~4s, no API key, and it is all `blast` reads. The LLM tier
         # is no longer on this path — `blast --name` below pays for the six labels
         # the comment actually shows instead of summarising the whole repo.
-        $GRAFT build .
+        $SYMGRAPH build .
 
     - name: Compute the blast radius
       id: blast
@@ -136,7 +136,7 @@ runs:
         PR_AUTHOR_EMAIL: ${{ github.event.pull_request.user.email }}
         VIEWER_URL: ${{ inputs.viewer-url }}
         EXPORT_VIZ: ${{ inputs.export-viewer }}
-        GRAFT: ${{ inputs.graft-cmd }}
+        SYMGRAPH: ${{ inputs.symgraph-cmd }}
       run: |
         set -euo pipefail
         # An ARRAY, not a string: a value here can contain a space (a git display
@@ -155,7 +155,7 @@ runs:
         if [ "$SUGGEST_REVIEWERS" = "true" ]; then
           # Both keys for the same person, and neither is reliable alone: CI has the
           # login, the commits have the email, and the webhook usually leaves the
-          # email empty. `graft blast` also excludes every author in the diff range
+          # email empty. `symgraph blast` also excludes every author in the diff range
           # itself, which is what actually covers the empty-email case.
           authors=()
           if [ -n "$PR_AUTHOR" ]; then authors+=("$PR_AUTHOR"); fi
@@ -165,15 +165,15 @@ runs:
           args+=(--no-owners)
         fi
         args+=(--format markdown)
-        $GRAFT "${args[@]}" > blast.md
+        $SYMGRAPH "${args[@]}" > blast.md
         if [ -n "$VIEWER_URL" ]; then
           printf '\n[**Open the interactive graph →**](%s) — click an area to see its dependent symbols at file:line.\n' "$VIEWER_URL" >> blast.md
         fi
         cat blast.md >> "$GITHUB_STEP_SUMMARY"
         {
-          echo "markdown<<GRAFT_EOF"
+          echo "markdown<<SYMGRAPH_EOF"
           cat blast.md
-          echo "GRAFT_EOF"
+          echo "SYMGRAPH_EOF"
         } >> "$GITHUB_OUTPUT"
 
     - name: Post or update the comment
@@ -188,7 +188,7 @@ runs:
         # One comment per PR, edited in place: a new comment on every push turns a
         # busy PR into a wall of stale diagrams. The marker is how the comment is
         # found again, and it stays invisible in the rendered body.
-        marker='<!-- graft-blast-radius -->'
+        marker='<!-- symgraph-blast-radius -->'
         printf '%s\n' "$marker" > body.md
         cat blast.md >> body.md
         # `--paginate` runs the filter per page, so a match could print more than one

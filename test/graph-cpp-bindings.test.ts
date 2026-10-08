@@ -47,7 +47,7 @@ public:
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-cpp-bind-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-cpp-bind-"));
   writeFileSync(join(dir, "body.h"), BODY_H);
   writeFileSync(join(dir, "entity.h"), ENTITY_H);
   writeFileSync(join(dir, "game.cpp"), GAME_CPP);
@@ -57,7 +57,7 @@ function makeFixture(): string {
 test("C++ member calls resolve through declared local, parameter, and field types", async () => {
   const dir = makeFixture();
   await buildGraph(dir);
-  const graph: GraphV1 | null = readGraph(wiringPath(join(dir, "graft")));
+  const graph: GraphV1 | null = readGraph(wiringPath(join(dir, "symgraph")));
   assert.ok(graph, "wiring graph should be written");
 
   const calls = graph!.edges

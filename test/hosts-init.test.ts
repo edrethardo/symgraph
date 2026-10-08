@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 // The MCP launch command is resolved from PATH at init time; pin it to the npx
 // form so these expectations are the same on every machine.
-process.env.GRAFT_MCP_NPX = '1';
+process.env.SYMGRAPH_MCP_NPX = '1';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -18,7 +18,7 @@ test('writes only detected hosts by default', () => {
   mkdirSync(join(home, '.cursor'));
   const r = runHostsInit(repo, { home });
   assert.deepEqual(r.written.map((w) => w.id), ['cursor']);
-  const mdc = readFileSync(join(repo, '.cursor', 'rules', 'graft.mdc'), 'utf8');
+  const mdc = readFileSync(join(repo, '.cursor', 'rules', 'symgraph.mdc'), 'utf8');
   assert.match(mdc, /alwaysApply: true/);
   assert.ok(!existsSync(join(repo, 'AGENTS.md')));
 });
@@ -28,7 +28,7 @@ test('explicit agents list overrides detection and flags unknown ids', () => {
   const r = runHostsInit(repo, { home, agents: ['gemini', 'nope'] });
   assert.deepEqual(r.written.map((w) => w.id), ['gemini']);
   assert.deepEqual(r.unknown, ['nope']);
-  assert.ok(readFileSync(join(repo, 'GEMINI.md'), 'utf8').includes('graft ask'));
+  assert.ok(readFileSync(join(repo, 'GEMINI.md'), 'utf8').includes('symgraph ask'));
 });
 
 test('all writes every host and re-run converges (idempotent)', () => {
@@ -39,7 +39,7 @@ test('all writes every host and re-run converges (idempotent)', () => {
   assert.ok(second.written.every((w) => w.action === 'unchanged'));
   // `agents` and `antigravity` share AGENTS.md, but the fenced section is written once
   const agents = readFileSync(join(repo, 'AGENTS.md'), 'utf8');
-  assert.equal(agents.match(/graft:start/g)!.length, 1);
+  assert.equal(agents.match(/symgraph:start/g)!.length, 1);
 });
 
 test('preserves user content around the fenced section', () => {
@@ -51,15 +51,15 @@ test('preserves user content around the fenced section', () => {
   assert.deepEqual(r.written.map((w) => w.id), ['copilot']);
   const text = readFileSync(target, 'utf8');
   assert.ok(text.startsWith('# House rules'));
-  assert.ok(text.includes('graft ask'));
+  assert.ok(text.includes('symgraph ask'));
 });
 
-test('CLI: graft init --agents gemini writes GEMINI.md and exits 0', () => {
+test('CLI: symgraph init --agents gemini writes GEMINI.md and exits 0', () => {
   const repo = fresh();
   execFileSync(process.execPath, ['--import', 'tsx', 'src/cli.ts', 'init', repo, '--no-build', '--agents', 'gemini'], {
     encoding: 'utf8',
   });
-  assert.ok(readFileSync(join(repo, 'GEMINI.md'), 'utf8').includes('graft ask'));
+  assert.ok(readFileSync(join(repo, 'GEMINI.md'), 'utf8').includes('symgraph ask'));
 });
 
 test('CLI: unknown agent id exits non-zero', () => {
@@ -112,7 +112,7 @@ test('runHostsInit registers MCP configs for selected hosts', () => {
   // shape, not the platform.
   assert.match(toPosixPath(r.mcp[0].path), /\.cursor\/mcp\.json$/);
   const cfg = JSON.parse(readFileSync(join(repo, '.cursor', 'mcp.json'), 'utf8'));
-  assert.equal(cfg.mcpServers.graft.command, 'npx');
+  assert.equal(cfg.mcpServers.symgraph.command, 'npx');
 });
 
 test('mcp: false skips MCP registration', () => {
@@ -125,7 +125,7 @@ test('mcp: false skips MCP registration', () => {
 test('CLI: --no-mcp writes the rule file but no MCP config', () => {
   const repo = fresh();
   execFileSync(process.execPath, ['--import', 'tsx', 'src/cli.ts', 'init', repo, '--no-build', '--agents', 'cursor', '--no-mcp'], { encoding: 'utf8' });
-  assert.ok(existsSync(join(repo, '.cursor', 'rules', 'graft.mdc')));
+  assert.ok(existsSync(join(repo, '.cursor', 'rules', 'symgraph.mdc')));
   assert.ok(!existsSync(join(repo, '.cursor', 'mcp.json')));
 });
 
@@ -134,7 +134,7 @@ test('runHostsInit installs hooks for the agents id when the CLI home exists', (
   mkdirSync(join(home, '.codex'), { recursive: true });
   const r = runHostsInit(repo, { home, agents: ['agents'] });
   assert.equal(r.hooks.length, 2);
-  assert.ok(existsSync(join(home, '.codex', 'hooks', 'graft', 'graft-hooks.cjs')));
+  assert.ok(existsSync(join(home, '.codex', 'hooks', 'symgraph', 'symgraph-hooks.cjs')));
 });
 
 test('hooks: false skips hook installation', () => {
@@ -164,7 +164,7 @@ test('global: false keeps the instruction file but skips every ~ write', () => {
 // --- CLI: choosing what gets written ------------------------------------
 
 /**
- * Run `graft init` with a scratch home so tests never touch the real ~/.codex,
+ * Run `symgraph init` with a scratch home so tests never touch the real ~/.codex,
  * and return stderr. The child gets a pipe rather than a TTY, which is exactly
  * the non-interactive path we want to exercise.
  *
@@ -184,7 +184,7 @@ test('CLI: no flags and no TTY writes nothing and names the detected agents', ()
   const out = cliStderr(repo, home);
   assert.match(out, /nothing written/);
   assert.match(out, /detected: claude, cursor/);
-  assert.match(out, /graft init --agents claude cursor/);
+  assert.match(out, /symgraph init --agents claude cursor/);
   assert.deepEqual(readdirSync(repo), []);
 });
 
@@ -210,7 +210,7 @@ test('CLI: --yes wires every detected agent (the pre-0.8 default)', () => {
   mkdirSync(join(home, '.cursor'));
   cliStderr(repo, home, ['--yes']);
   assert.ok(existsSync(join(repo, '.claude', 'settings.json')));
-  assert.ok(existsSync(join(repo, '.cursor', 'rules', 'graft.mdc')));
+  assert.ok(existsSync(join(repo, '.cursor', 'rules', 'symgraph.mdc')));
   // gemini was never installed in this scratch home, so it is not wired.
   assert.ok(!existsSync(join(repo, 'GEMINI.md')));
 });
@@ -238,7 +238,7 @@ test('CLI: --no-global stays quiet when the selection has nothing out-of-repo', 
   mkdirSync(join(home, '.codex'), { recursive: true });
   // cursor writes only inside the repo, so there is nothing for --no-global to skip.
   const out = cliStderr(repo, home, ['--agents', 'cursor', '--no-global']);
-  assert.ok(existsSync(join(repo, '.cursor', 'rules', 'graft.mdc')));
+  assert.ok(existsSync(join(repo, '.cursor', 'rules', 'symgraph.mdc')));
   assert.doesNotMatch(out, /skipped out-of-repo writes/);
 });
 
@@ -246,7 +246,7 @@ test('CLI: --dry-run respects an explicit --agents list', () => {
   const home = fresh(); const repo = fresh();
   mkdirSync(join(home, '.codex'), { recursive: true });
   const out = cliStderr(repo, home, ['--agents', 'adal', '--dry-run']);
-  assert.ok(out.includes(join('.adal', 'skills', 'graft', 'SKILL.md')), out);
+  assert.ok(out.includes(join('.adal', 'skills', 'symgraph', 'SKILL.md')), out);
   assert.doesNotMatch(out, /AGENTS\.md/);
   assert.doesNotMatch(out, /affects ALL repos/);
 });

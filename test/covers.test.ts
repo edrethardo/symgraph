@@ -14,7 +14,7 @@ import { buildGraph } from "../src/graph/build.js";
 import { fakeProviders } from "./helpers.js";
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-covers-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-covers-"));
   writeFileSync(
     join(dir, "auth.ts"),
     `// [[Auth Service]] ==depends_on==> [[Token Store]]\n` +
@@ -29,7 +29,7 @@ test("wiring build backfills covers: onto concept nodes", async () => {
     await buildContext(dir, { model: "fake", ...fakeProviders() });
     await buildGraph(dir); // $0, no LLM — still writes cards + covers
 
-    const fm = matter(readFileSync(join(dir, "graft", "auth-service.md"), "utf8")).data;
+    const fm = matter(readFileSync(join(dir, "symgraph", "auth-service.md"), "utf8")).data;
     assert.ok(Array.isArray(fm.covers), "covers should be an array");
     const login = fm.covers.find((c: { symbol: string }) => c.symbol === "login");
     assert.ok(login, "covers should include the login function");
@@ -44,7 +44,7 @@ test("patching covers preserves the node's body and other frontmatter", async ()
   const dir = makeFixture();
   try {
     await buildContext(dir, { model: "fake", ...fakeProviders() });
-    const path = join(dir, "graft", "auth-service.md");
+    const path = join(dir, "symgraph", "auth-service.md");
     const before = matter(readFileSync(path, "utf8"));
     await buildGraph(dir);
     const after = matter(readFileSync(path, "utf8"));
@@ -66,7 +66,7 @@ test("writeCovers does not stamp covers onto a root-level file card (#261)", asy
   try {
     await buildContext(dir, { model: "fake", ...fakeProviders() });
     await buildGraph(dir);
-    const card = matter(readFileSync(join(dir, "graft", "auth.md"), "utf8"));
+    const card = matter(readFileSync(join(dir, "symgraph", "auth.md"), "utf8"));
     assert.equal(card.data.slug, undefined, "file card has no concept slug");
     assert.ok(!("covers" in card.data), "file cards must not grow concept covers: []");
     assert.match(card.content.trimStart(), /^# auth\.ts/);
@@ -80,9 +80,9 @@ test("re-running the wiring build leaves covers byte-stable", async () => {
   try {
     await buildContext(dir, { model: "fake", ...fakeProviders() });
     await buildGraph(dir);
-    const first = readFileSync(join(dir, "graft", "auth-service.md"), "utf8");
+    const first = readFileSync(join(dir, "symgraph", "auth-service.md"), "utf8");
     await buildGraph(dir);
-    const second = readFileSync(join(dir, "graft", "auth-service.md"), "utf8");
+    const second = readFileSync(join(dir, "symgraph", "auth-service.md"), "utf8");
     assert.equal(second, first);
   } finally {
     rmSync(dir, { recursive: true, force: true });

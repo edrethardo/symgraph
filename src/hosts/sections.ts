@@ -1,12 +1,12 @@
 /**
- * Marker-fenced section upsert. Graft owns exactly the region between the
+ * Marker-fenced section upsert. Symgraph owns exactly the region between the
  * markers; everything else in the file belongs to the user and is preserved.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-export const START = '<!-- graft:start -->';
-export const END = '<!-- graft:end -->';
+export const START = '<!-- symgraph:start -->';
+export const END = '<!-- symgraph:end -->';
 
 export type UpsertAction = 'created' | 'appended' | 'replaced' | 'unchanged';
 

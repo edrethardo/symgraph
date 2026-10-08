@@ -31,7 +31,7 @@ export function hookTargets(home: string): PlannedWrite[] {
   return [
     {
       hostId: 'agents', id: 'codex-hook-shim',
-      path: join(base, 'hooks', 'graft', 'graft-hooks.cjs'),
+      path: join(base, 'hooks', 'symgraph', 'symgraph-hooks.cjs'),
       scope: 'global', kind: 'hook', what: 'post-edit hook shim',
     },
     {
@@ -54,13 +54,13 @@ function writeOwned(id: string, path: string, content: string, mode?: number): H
   return { id, path, action: existed ? 'updated' : 'created' };
 }
 
-function isGraftEntry(entry: unknown): boolean {
-  return JSON.stringify(entry).includes('graft-hooks.cjs');
+function isSymgraphEntry(entry: unknown): boolean {
+  return JSON.stringify(entry).includes('symgraph-hooks.cjs');
 }
 
 /**
- * The graft hook entries Codex should carry, mirroring the Claude Code set:
- *   - SessionStart → orientation from `graft/INDEX.md`
+ * The symgraph hook entries Codex should carry, mirroring the Claude Code set:
+ *   - SessionStart → orientation from `symgraph/INDEX.md`
  *   - UserPromptSubmit → the coupling-seed retrieval pack (the accuracy hook)
  *   - PostToolUse (an edit) → blast radius + mark the graph dirty
  *   - Stop → one background graph sync at turn end (not after every edit)
@@ -103,9 +103,9 @@ export function installCodexHooks(home: string): HookWrite[] {
     const prior: unknown[] = Array.isArray(hooks[d.event]) ? hooks[d.event] : [];
     const handler = { type: 'command', command: `node "${shimPath}" ${d.sub}`, timeout: d.timeout };
     const entry = d.matcher ? { matcher: d.matcher, hooks: [handler] } : { hooks: [handler] };
-    // Preserve foreign entries in this event; replace any prior graft entry so an
+    // Preserve foreign entries in this event; replace any prior symgraph entry so an
     // upgrade re-points to the current shim/sub-command instead of stacking.
-    hooks[d.event] = [...prior.filter((e) => !isGraftEntry(e)), entry];
+    hooks[d.event] = [...prior.filter((e) => !isSymgraphEntry(e)), entry];
   }
 
   if (JSON.stringify(root) === before) return [shimWrite, { id: 'codex-hooks', path: cfgPath, action: 'unchanged' }];

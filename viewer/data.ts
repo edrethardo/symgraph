@@ -1,5 +1,5 @@
 /**
- * Data layer: fetches both graphs from the graft viz server and carries the
+ * Data layer: fetches both graphs from the symgraph viz server and carries the
  * edge semantics (verb → family → form) defined in the design spec.
  */
 
@@ -47,7 +47,7 @@ export interface Evidence {
 export interface VizGraph {
   meta: {
     repoName?: string; subtitle?: string;
-    /** Set by `graft viz --export`: the tab whose graph actually has content. */
+    /** Set by `symgraph viz --export`: the tab whose graph actually has content. */
     defaultTab?: "context" | "code";
     /** Tabs this page offers. A blast export ships Context alone. */
     tabs?: Array<"context" | "code" | "outline">;
@@ -97,7 +97,7 @@ export const CHIP_HINT: Record<string, string> = {
 };
 
 /** Node-type → CSS custom property, per tab. */
-// `changed` / `affected` come from `graft blast --export-viz`, where the graph is a
+// `changed` / `affected` come from `symgraph blast --export-viz`, where the graph is a
 // PR's blast radius rather than the concept map: amber for what the diff touched,
 // blue for what depends on it. The legend labels itself from these type names.
 const CONTEXT_COLORS: Record<string, string> = {
@@ -119,7 +119,7 @@ export function cvar(name: string): string {
 }
 
 /**
- * Graphs inlined by `graft viz --export`, when the page was exported rather than
+ * Graphs inlined by `symgraph viz --export`, when the page was exported rather than
  * served. The static file has no server behind it, so a fetch would 404 — but the
  * viewer must not care which way it was opened, so this is the only place that
  * knows the difference.
@@ -128,7 +128,7 @@ interface InlinedData {
   contextGraph?: VizGraph;
   codeGraph?: unknown;
 }
-const inlined = (globalThis as { __GRAFT_DATA__?: InlinedData }).__GRAFT_DATA__;
+const inlined = (globalThis as { __SYMGRAPH_DATA__?: InlinedData }).__SYMGRAPH_DATA__;
 
 export async function loadContextGraph(): Promise<VizGraph> {
   if (inlined?.contextGraph) return inlined.contextGraph;

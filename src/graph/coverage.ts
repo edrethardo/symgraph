@@ -58,7 +58,7 @@ export function unindexedCodeStats(files: string[]): UnindexedStat[] {
     .sort((a, b) => b.files - a.files || a.ext.localeCompare(b.ext));
 }
 
-/** The `graft build` banner line for skipped code, or null when nothing was.
+/** The `symgraph build` banner line for skipped code, or null when nothing was.
  * "skipped: 350 files (no parser: .h, .cpp) — symbol tools will not cover them" */
 export function skippedLine(stats: UnindexedStat[]): string | null {
   if (stats.length === 0) return null;
@@ -94,7 +94,7 @@ export function mergeUnindexed(lists: (UnindexedStat[] | undefined)[]): Unindexe
 }
 
 /**
- * For a single file the caller named (e.g. `graft skeleton enemy_ai.rs`): when
+ * For a single file the caller named (e.g. `symgraph skeleton enemy_ai.rs`): when
  * its extension is code-like but unparseable, the honest answer is "no parser",
  * not "no definitions". Null for supported or non-code files.
  */

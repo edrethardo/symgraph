@@ -12,7 +12,7 @@ permissions:
 jobs:
   test:
     name: test (${{ matrix.os }})
-    # Windows is not redundant coverage here: graft stores repo-relative paths and
+    # Windows is not redundant coverage here: symgraph stores repo-relative paths and
     # parses them with `/` by hand, so a platform-separator leak matches nothing
     # rather than erroring. That class of bug is invisible to a posix-only matrix
     # (it shipped in 0.8.2 and took three user reports to find). This leg gates, and

@@ -1,5 +1,5 @@
 /**
- * The `graft/.cache/` sidecar state: the statusline's stats snapshot and the
+ * The `symgraph/.cache/` sidecar state: the statusline's stats snapshot and the
  * build lock that serializes rebuilds.
  *
  * Lives in `util/` rather than `claude/` because two very different callers need
@@ -11,6 +11,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join, dirname, isAbsolute } from 'node:path';
+import { migrateLegacyLayout } from './legacy.js';
 
 export interface Stats {
   nodeCount: number; edgeCount: number; languages: string[];
@@ -35,14 +36,17 @@ const LOCK_FILE = '.sync.lock';
  * and `upkeep` all resolve a bare project dir and never see an explicit
  * `--dir` — unlike a direct CLI invocation, which threads one through
  * `contextDirFor` (`context/node-file.ts`). This mirrors that same override
- * precedence for those entry points: `GRAFT_DIR` wins over the default
- * `<projectDir>/graft`, the same env var `resolveConfig` already honors for
- * the `--deep` LLM path. A relative `GRAFT_DIR` resolves against `projectDir`
+ * precedence for those entry points: `SYMGRAPH_DIR` wins over the default
+ * `<projectDir>/symgraph`, the same env var `resolveConfig` already honors for
+ * the `--deep` LLM path. A relative `SYMGRAPH_DIR` resolves against `projectDir`
  * so it holds regardless of the caller's cwd.
  */
 export function resolveContextDir(projectDir: string): string {
-  const override = process.env.GRAFT_DIR;
-  if (!override) return join(projectDir, 'graft');
+  const override = process.env.SYMGRAPH_DIR;
+  if (!override) {
+    migrateLegacyLayout(projectDir);
+    return join(projectDir, 'symgraph');
+  }
   return isAbsolute(override) ? override : join(projectDir, override);
 }
 
@@ -63,7 +67,7 @@ export function readJson<T>(p: string): T | null {
  * A failed write takes its scratch file with it. Every CLI invocation is a new pid,
  * so the names never collide and never get reused: leaving them behind means a repo
  * that fails this write repeatedly (ENOSPC, or a Windows indexer holding the target
- * open) accumulates one full-size file per attempt, and nothing in graft ever lists
+ * open) accumulates one full-size file per attempt, and nothing in symgraph ever lists
  * `.cache/` to clean them up.
  */
 export function writeJsonAtomic(p: string, value: unknown, compact = false): void {
@@ -105,9 +109,9 @@ export interface BuildConfig {
 }
 
 /** Local, Git-ignored repository configuration. Kept outside generated
- * `graft/` output so deleting/replacing that cache, workspace federation, and
+ * `symgraph/` output so deleting/replacing that cache, workspace federation, and
  * custom `--dir` builds cannot erase or redirect the persisted choice. */
-export const BUILD_CONFIG_DIR = '.graft';
+export const BUILD_CONFIG_DIR = '.symgraph';
 
 export function buildConfigPath(d: string): string { return join(d, BUILD_CONFIG_DIR, 'config.json'); }
 
@@ -123,7 +127,7 @@ function ensureBuildConfigIgnored(d: string): void {
   });
   if (present) return;
   const gap = current === '' ? '' : current.endsWith('\n') ? '\n' : '\n\n';
-  const block = `${gap}# graft's local repository settings — not committed.\n/${BUILD_CONFIG_DIR}/\n`;
+  const block = `${gap}# symgraph's local repository settings — not committed.\n/${BUILD_CONFIG_DIR}/\n`;
   try { writeFileSync(path, current + block); } catch { /* best-effort */ }
 }
 
@@ -175,7 +179,7 @@ export function releaseLock(d: string): void {
 
 /**
  * The lock, addressed by cache dir rather than project dir. For the default layout
- * `<root>/graft/.cache` these are the same file, which is the point: the Claude Code
+ * `<root>/symgraph/.cache` these are the same file, which is the point: the Claude Code
  * hooks lock by project dir and the graph's auto-refresh locks by the context dir it
  * is actually writing, and the two must collide so they can't rebuild at once.
  */

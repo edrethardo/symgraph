@@ -200,7 +200,7 @@ test("buildGraph wires meta.scopes: substantial scopes survive, tiny scopes merg
   });
   try {
     await buildGraph(d);
-    const graph = readGraph(wiringPath(join(d, "graft")));
+    const graph = readGraph(wiringPath(join(d, "symgraph")));
     assert.ok(graph, "wiring graph should be written");
     const prefixes = (graph!.meta.scopes ?? []).map((s) => s.prefix).sort();
     assert.deepEqual(prefixes, ["backend", "frontend"]); // tiny (1 symbol) merged into root
@@ -217,7 +217,7 @@ test("old graphs without meta.scopes fall back to the canonical root scope via s
       nodes: [],
       edges: [],
     };
-    const outDir = join(d, "graft");
+    const outDir = join(d, "symgraph");
     writeGraph(graph, outDir);
 
     const loaded = loadGraphCached(outDir);

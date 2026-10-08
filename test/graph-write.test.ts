@@ -48,7 +48,7 @@ function assertUniqueIds(nodes: NodeV1[]): void {
 }
 
 test("writeGraph strips body_text from the serialized node but keeps every other field", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-write-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-write-"));
   try {
     const node = makeNode({ body_text: "some searchable definition body" });
     const graph: GraphV1 = {
@@ -76,7 +76,7 @@ test("writeGraph strips body_text from the serialized node but keeps every other
 });
 
 test("writeGraph does not mutate the in-memory node — build.ts's sidecar pass needs body_text intact", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-write-mutate-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-write-mutate-"));
   try {
     const node = makeNode({ body_text: "untouched body text" });
     const graph: GraphV1 = {
@@ -94,7 +94,7 @@ test("writeGraph does not mutate the in-memory node — build.ts's sidecar pass 
 });
 
 test("a node with no body_text (e.g. a file node) round-trips unchanged", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-write-nobody-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-write-nobody-"));
   try {
     const node = makeNode({ kind: "file", signature: null });
     const graph: GraphV1 = {
@@ -115,7 +115,7 @@ test("a node with no body_text (e.g. a file node) round-trips unchanged", () => 
 // ── Contract line 1: new builds' wiring.json has NO body_text key on any node ──
 
 test("buildGraph: the serialized wiring.json has no body_text key on ANY node", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-write-build-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-write-build-"));
   try {
     writeFileSync(
       join(dir, "auth.ts"),
@@ -144,7 +144,7 @@ test("buildGraph: the serialized wiring.json has no body_text key on ANY node", 
 });
 
 test("A3 PERMANENT gate: duplicate-named definitions still produce unique node ids in the written wiring.json", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-write-dup-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-write-dup-"));
   try {
     writeFileSync(
       join(dir, "dup.ts"),

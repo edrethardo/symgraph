@@ -1,7 +1,7 @@
 /**
  * Provider-neutral chat transport.
  *
- * Every LLM call in graft — the engine's single-shot summarize/synthesize/crux
+ * Every LLM call in symgraph — the engine's single-shot summarize/synthesize/crux
  * ops, and any multi-turn tool-use loop built on top — goes through one interface,
  * {@link ChatModel}. Adapters translate this neutral shape to a concrete SDK
  * (OpenAI-compatible or native Anthropic). Nothing above this layer knows which
@@ -121,6 +121,6 @@ export interface ChatModel {
  * may want fewer, and a flaky local proxy more.
  */
 export function transportRetries(): number {
-  const raw = Number(process.env.GRAFT_LLM_RETRIES);
+  const raw = Number(process.env.SYMGRAPH_LLM_RETRIES);
   return Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 4;
 }

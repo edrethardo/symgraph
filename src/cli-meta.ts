@@ -1,5 +1,5 @@
 /**
- * `graft version` / `graft --version` / `graft upgrade` support.
+ * `symgraph version` / `symgraph --version` / `symgraph upgrade` support.
  *
  * Split out of cli.ts so the formatting helpers can be unit-tested with
  * injected results instead of hitting the network from tests.
@@ -10,7 +10,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toPosixPath } from "./util/paths.js";
 
-const PKG_NAME = "@nanonets/graft";
+const PKG_NAME = "symgraph";
 
 /** Locates package.json relative to a module URL (works for both `dist/cli.js`
  * running one level under the published package root, and `src/cli.ts` running
@@ -24,7 +24,7 @@ export function resolvePackageJsonPath(moduleUrl: string): string {
   return candidates[0];
 }
 
-/** Reads the version of the graft package this module was loaded from. */
+/** Reads the version of the symgraph package this module was loaded from. */
 export function readCurrentVersion(moduleUrl: string): string {
   const raw = readFileSync(resolvePackageJsonPath(moduleUrl), "utf8");
   const pkg = JSON.parse(raw) as { version?: string };
@@ -36,7 +36,7 @@ export function readCurrentVersion(moduleUrl: string): string {
  *
  * Normalized first: `fileURLToPath` returns the *platform* separator, so on
  * Windows the cache path is `…\_npx\…` and a bare `includes("/_npx/")` is always
- * false — `graft upgrade` would then run `npm install -g` on top of an npx run.
+ * false — `symgraph upgrade` would then run `npm install -g` on top of an npx run.
  * Same hardcoded-`/` mistake as #33; `src/util/paths.ts` exists for exactly this. */
 export function isRunningViaNpx(moduleUrl: string): boolean {
   return toPosixPath(fileURLToPath(moduleUrl)).includes("/_npx/");
@@ -65,15 +65,15 @@ export function getNpmViewVersion(pkgName: string = PKG_NAME, timeoutMs = 2000):
   }
 }
 
-/** Pure formatter for `graft version` — no I/O, easy to unit-test. */
+/** Pure formatter for `symgraph version` — no I/O, easy to unit-test. */
 export function formatVersionReport(current: string, latest: NpmViewResult): string {
-  const lines = [`graft ${current}`];
+  const lines = [`symgraph ${current}`];
   if (!latest.ok || !latest.version) {
     lines.push("latest: unreachable (offline?)");
   } else if (latest.version === current) {
     lines.push(`latest on npm: ${current} ✓ up to date`);
   } else {
-    lines.push(`latest on npm: ${latest.version} — run graft upgrade`);
+    lines.push(`latest on npm: ${latest.version} — run symgraph upgrade`);
   }
   return lines.join("\n");
 }
@@ -122,17 +122,17 @@ export interface UpgradeResult {
 export function formatUpgradeReport(result: UpgradeResult): string {
   if (!result.ran) {
     return (
-      "running via npx — npx already fetches the latest graft on every run.\n" +
-      "For a permanent install: npm install -g @nanonets/graft"
+      "running via npx — npx already fetches the latest symgraph on every run.\n" +
+      "For a permanent install: npm install -g symgraph"
     );
   }
   if (!result.ok) {
     return `✗ npm install -g ${PKG_NAME}@latest failed${result.errorMessage ? `: ${result.errorMessage}` : ""}`;
   }
-  return `graft ${result.oldVersion ?? "?"} → ${result.newVersion ?? result.oldVersion ?? "?"}`;
+  return `symgraph ${result.oldVersion ?? "?"} → ${result.newVersion ?? result.oldVersion ?? "?"}`;
 }
 
-/** Runs `npm install -g @nanonets/graft@latest` (inheriting stdio so the user
+/** Runs `npm install -g symgraph@latest` (inheriting stdio so the user
  * sees npm's own progress/errors), then re-reads the freshly installed
  * version. No-ops with guidance when running via npx. */
 export function runUpgrade(moduleUrl: string): UpgradeResult {

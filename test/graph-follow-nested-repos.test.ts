@@ -16,14 +16,14 @@ function gitRun(root: string, args: string[]): void {
 function commitAll(root: string, message: string): void {
   gitRun(root, ["add", "-A"]);
   gitRun(root, [
-    "-c", "user.name=Graft Tests",
-    "-c", "user.email=graft-tests@example.invalid",
+    "-c", "user.name=Symgraph Tests",
+    "-c", "user.email=symgraph-tests@example.invalid",
     "commit", "-qm", message,
   ]);
 }
 
 function graphOf(root: string): GraphV1 {
-  const graph = readGraph(wiringPath(join(root, "graft")));
+  const graph = readGraph(wiringPath(join(root, "symgraph")));
   assert.ok(graph, `expected a graph for ${root}`);
   return graph;
 }
@@ -90,7 +90,7 @@ test("follow-nested-repos is opt-in, persisted, reversible, and does not mistake
     assert.ok(!def.nodes.some((n) => n.path.startsWith("external/dep_a/")));
     assert.ok(!def.nodes.some((n) => n.path.startsWith("external/dep_b/")));
     assert.equal(
-      existsSync(join(parent, ".graft", "config.json")),
+      existsSync(join(parent, ".symgraph", "config.json")),
       false,
       "an implicit default must not create local config",
     );
@@ -106,7 +106,7 @@ test("follow-nested-repos is opt-in, persisted, reversible, and does not mistake
       "SKIP_DIRS must still apply inside a followed nested repo",
     );
     assert.deepEqual(readBuildConfig(parent), { followNestedRepos: true });
-    assert.ok(isClean(probeDrift(parent, join(parent, "graft"))!));
+    assert.ok(isClean(probeDrift(parent, join(parent, "symgraph"))!));
 
     // 3. The cross-repo edge: one graph, so dep_b's import resolves into dep_a.
     assert.ok(
@@ -131,7 +131,7 @@ test("follow-nested-repos is opt-in, persisted, reversible, and does not mistake
     expectCliOk(["build", parent, "--no-follow-nested-repos"]);
     assert.ok(!graphOf(parent).nodes.some((n) => n.path.startsWith("external/dep_a/")));
     assert.deepEqual(readBuildConfig(parent), { followNestedRepos: false });
-    assert.ok(isClean(probeDrift(parent, join(parent, "graft"))!));
+    assert.ok(isClean(probeDrift(parent, join(parent, "symgraph"))!));
 
     expectCliOk(["build", parent]);
     assert.ok(!graphOf(parent).nodes.some((n) => n.path.startsWith("external/dep_a/")));

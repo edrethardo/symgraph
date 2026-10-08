@@ -26,6 +26,7 @@ import { join } from "node:path";
 import matter from "gray-matter";
 import { contentHash, normalizeName } from "../util/id.js";
 import { relPosix, stripTrailingSlashes } from "../util/paths.js";
+import { migrateLegacyLayout } from "../util/legacy.js";
 // Value-only import of a constant; `write.ts` pulls in nothing from here, so no cycle.
 import { GRAPH_DIR } from "../graph/write.js";
 
@@ -80,7 +81,7 @@ const MANIFEST_FILE = "manifest.json";
 /** Gitignored cache dir (per-file summaries + extractions), never committed. */
 export const CACHE_DIR = ".cache";
 
-/** Env kill switch — same truthy parsing as `GRAFT_NO_REFRESH` in ../graph/refresh.ts. */
+/** Env kill switch — same truthy parsing as `SYMGRAPH_NO_REFRESH` in ../graph/refresh.ts. */
 function envTruthy(name: string): boolean {
   const v = process.env[name];
   return v !== undefined && v !== "" && v !== "0" && v !== "false";
@@ -103,37 +104,38 @@ export function digestSources(sources: SourceRef[]): string {
   return contentHash(lines);
 }
 
-/** Absolute path of the `graft/` directory for a repo root. Visible (not
+/** Absolute path of the `symgraph/` directory for a repo root. Visible (not
  * dot-prefixed) on purpose: default ripgrep skips hidden dirs, so the agent's
  * grep/ls/find reflex must be able to land on the graph. */
 export function contextDirFor(root: string, override?: string): string {
   if (override) return override;
-  return join(root, "graft");
+  migrateLegacyLayout(root);
+  return join(root, "symgraph");
 }
 
 /**
- * Make sure the repo's root `.gitignore` ignores the graft output dir. The
+ * Make sure the repo's root `.gitignore` ignores the symgraph output dir. The
  * graph is a local, regenerable cache (like `node_modules`), not a committed
- * artifact, so every `graft build` adds the entry itself the first time — the
+ * artifact, so every `symgraph build` adds the entry itself the first time — the
  * user never has to think about it. No-ops when the entry is already present
  * or the dir lives outside `root` (a custom `--dir` elsewhere, which can't be
  * expressed as a repo-relative ignore). Best-effort: an unwritable `.gitignore`
  * must never abort a build, so write failures are swallowed.
  */
 export function ensureGitignored(root: string, contextDir: string): void {
-  if (envTruthy("GRAFT_NO_GITIGNORE")) return;
+  if (envTruthy("SYMGRAPH_NO_GITIGNORE")) return;
   const rel = relPosix(root, contextDir);
   if (rel === "" || rel.startsWith("..")) return; // dir is at/above the repo root — nothing sane to ignore
-  const bare = stripTrailingSlashes(rel); // "graft" (or a `--dir` subpath like "tools/ctx")
-  // Root-ANCHORED, so it ignores exactly this repo's `graft/` and not a directory named
-  // `graft` at any depth. An unanchored `graft/` also matched `.claude/skills/graft/`, so
-  // committing the skill graft just wrote was silently dropped (#79). `rel` is always
+  const bare = stripTrailingSlashes(rel); // "symgraph" (or a `--dir` subpath like "tools/ctx")
+  // Root-ANCHORED, so it ignores exactly this repo's `symgraph/` and not a directory named
+  // `symgraph` at any depth. An unanchored `symgraph/` also matched `.claude/skills/symgraph/`, so
+  // committing the skill symgraph just wrote was silently dropped (#79). `rel` is always
   // repo-relative here, so a leading `/` is always safe (incl. a `--dir` subpath).
   const entry = `/${bare}/`;
   const path = join(root, ".gitignore");
   let current = "";
   try { current = readFileSync(path, "utf8"); } catch { /* no .gitignore yet — we create one */ }
-  // Accept the anchored form AND the older unanchored `graft/` / `graft`, so existing
+  // Accept the anchored form AND the older unanchored `symgraph/` / `symgraph`, so existing
   // repos aren't double-appended and a hand-anchored entry survives the next build.
   const present = current.split("\n").some((l) => {
     const t = l.trim();
@@ -141,7 +143,7 @@ export function ensureGitignored(root: string, contextDir: string): void {
   });
   if (present) return;
   const gap = current === "" ? "" : current.endsWith("\n") ? "\n" : "\n\n";
-  const block = `${gap}# graft's local graph cache — regenerable, not committed (run \`graft build\`).\n${entry}\n`;
+  const block = `${gap}# symgraph's local graph cache — regenerable, not committed (run \`symgraph build\`).\n${entry}\n`;
   try { writeFileSync(path, current + block); } catch { /* best-effort — build already succeeded */ }
 }
 
@@ -166,7 +168,7 @@ export function ensureGitignored(root: string, contextDir: string): void {
  * must not fail over a convenience file.
  */
 export function ensureSearchable(root: string, contextDir: string): void {
-  if (envTruthy("GRAFT_NO_IGNORE")) return;
+  if (envTruthy("SYMGRAPH_NO_IGNORE")) return;
   const rel = relPosix(root, contextDir);
   if (rel === "" || rel.startsWith("..")) return; // outside the repo — nothing to re-admit
   const dir = stripTrailingSlashes(rel);
@@ -179,7 +181,7 @@ export function ensureSearchable(root: string, contextDir: string): void {
   if (current.split("\n").some((l) => l.trim() === entry)) return;
   const gap = current === "" ? "" : current.endsWith("\n") ? "\n" : "\n\n";
   const block =
-    `${gap}# graft's cards are gitignored but should stay greppable: ripgrep reads\n` +
+    `${gap}# symgraph's cards are gitignored but should stay greppable: ripgrep reads\n` +
     `# .ignore before .gitignore, so this re-admits the tree to search only.\n` +
     `${entry}\n${dir}/${CACHE_DIR}/\n${dir}/${GRAPH_DIR}/\n`;
   try { writeFileSync(path, current + block); } catch { /* best-effort */ }
@@ -262,9 +264,9 @@ export interface ParsedNode {
 }
 
 /**
- * Stems of per-file wiring cards that sit at the graft/ top level — i.e. cards
+ * Stems of per-file wiring cards that sit at the symgraph/ top level — i.e. cards
  * for source files in the repo root. Those cards share a directory with concept
- * nodes (`graft/<stem>.md`) but are recorded in `manifest.files`, not
+ * nodes (`symgraph/<stem>.md`) but are recorded in `manifest.files`, not
  * `manifest.nodes`. Nested file cards live in subdirs and are never scanned here.
  *
  * Incomplete on its own (#261): the graph can write a root card for a source

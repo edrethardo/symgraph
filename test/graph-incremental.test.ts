@@ -32,7 +32,7 @@ const MATH = [
 const APP = ['import { add } from "./math.js";', "export function main(): number {", "  return add(1, 2);", "}", ""].join("\n");
 
 function repo(): string {
-  const d = mkdtempSync(join(tmpdir(), "graft-incr-"));
+  const d = mkdtempSync(join(tmpdir(), "symgraph-incr-"));
   mkdirSync(join(d, "src"), { recursive: true });
   writeFileSync(join(d, "src", "math.ts"), MATH);
   writeFileSync(join(d, "src", "app.ts"), APP);
@@ -46,13 +46,13 @@ function gitRun(root: string, args: string[]): void {
 function commitRepo(root: string, message: string): void {
   gitRun(root, ["add", "-A"]);
   gitRun(root, [
-    "-c", "user.name=Graft Tests",
-    "-c", "user.email=graft-tests@example.invalid",
+    "-c", "user.name=Symgraph Tests",
+    "-c", "user.email=symgraph-tests@example.invalid",
     "commit", "-qm", message,
   ]);
 }
 
-const outOf = (d: string): string => join(d, "graft");
+const outOf = (d: string): string => join(d, "symgraph");
 const wiringOf = (d: string): string => readFileSync(wiringPath(outOf(d)), "utf8");
 
 test("an incremental rebuild writes byte-identical wiring.json to a cold one", async () => {
@@ -64,7 +64,7 @@ test("an incremental rebuild writes byte-identical wiring.json to a cold one", a
 });
 
 test("A3: an incremental rebuild is still byte-identical to a cold one on a duplicate-name-bearing fixture", async () => {
-  const d = mkdtempSync(join(tmpdir(), "graft-incr-dup-"));
+  const d = mkdtempSync(join(tmpdir(), "symgraph-incr-dup-"));
   mkdirSync(join(d, "src"), { recursive: true });
   writeFileSync(join(d, "src", "dup.ts"), "export function helper(): void {}\nexport function helper(): void {}\n");
 
@@ -195,7 +195,7 @@ test("every file on disk lands in the fingerprint", async () => {
 
 test("initialized submodule files share the graph and freshness fingerprint (#74)", async () => {
   const parent = repo();
-  const child = mkdtempSync(join(tmpdir(), "graft-incr-submodule-"));
+  const child = mkdtempSync(join(tmpdir(), "symgraph-incr-submodule-"));
   try {
     execFileSync("git", ["init", "-q"], { cwd: parent });
     commitRepo(parent, "parent fixture");
@@ -326,7 +326,7 @@ test("extractorStamp: a real identity for the loaded extraction code", () => {
 });
 
 test("the stamp moves for any module in the extractor directory, not just one", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-stamp-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-stamp-"));
   writeFileSync(join(dir, "extract.js"), "export const a = 1;\n");
   writeFileSync(join(dir, "bindings.js"), "export const b = 1;\n");
   writeFileSync(join(dir, "notes.txt"), "not code\n");
@@ -340,7 +340,7 @@ test("the stamp moves for any module in the extractor directory, not just one", 
   const afterSibling = stampDir(dir, ".js", "0.8.0");
   assert.notEqual(afterSibling, base, "a sibling module's content must count");
 
-  // A grammar upgrade changes parse output without touching any of graft's files.
+  // A grammar upgrade changes parse output without touching any of symgraph's files.
   assert.notEqual(stampDir(dir, ".js", "0.8.1"), afterSibling, "the package version must count");
 
   // Non-code in the same directory must not churn the memo.
@@ -369,7 +369,7 @@ test("a memo written by a different extractor is dropped, not replayed", async (
   assert.equal(cold.parsed, cold.files);
 });
 
-test("two grafts on one repo keep separate memos instead of evicting each other", async () => {
+test("two symgraphs on one repo keep separate memos instead of evicting each other", async () => {
   const d = repo();
   await buildGraph(d);
   const cache = join(outOf(d), ".cache");
@@ -380,8 +380,8 @@ test("two grafts on one repo keep separate memos instead of evicting each other"
   assert.ok(basename(mine).includes(extractorStamp()!), `stamp missing from ${basename(mine)}`);
   assert.ok(basename(fingerprintPath(outOf(d))).includes(extractorStamp()!), "same for the probe sidecar");
 
-  // Stand in for the other install — `graft init` wires the MCP server as
-  // `npx -y @nanonets/graft` while the hooks run the locally installed dist, so two
+  // Stand in for the other install — `symgraph init` wires the MCP server as
+  // `npx -y symgraph` while the hooks run the locally installed dist, so two
   // different versions on one repo is the DEFAULT setup, not an exotic one. With a
   // single shared filename they took turns rejecting each other's entries and
   // cold-re-parsing the whole repo on every call.
@@ -416,7 +416,7 @@ test("with no extractor identity, nothing is memoized — and 'unknown' is never
     const body = JSON.parse(readFileSync(join(outOf(d), ".cache", f), "utf8")) as { extractor?: string };
     if (body.extractor !== undefined) assert.notEqual(body.extractor, "unknown", `${f} stores the sentinel`);
   }
-  assert.equal(stampDir(mkdtempSync(join(tmpdir(), "graft-empty-")), ".js"), null, "an empty dir has no identity");
+  assert.equal(stampDir(mkdtempSync(join(tmpdir(), "symgraph-empty-")), ".js"), null, "an empty dir has no identity");
 });
 
 test("an incremental rebuild leaves the ask sidecar agreeing with the graph", async () => {
@@ -436,10 +436,10 @@ test("an incremental rebuild leaves the ask sidecar agreeing with the graph", as
 });
 
 /**
- * `graft check` re-reads and re-hashes every file; the builder must too. If the
+ * `symgraph check` re-reads and re-hashes every file; the builder must too. If the
  * builder trusted `(size, mtimeMs)` the way the probe does, then on a filesystem with
- * coarse mtime granularity a same-length edit inside one tick would leave `graft
- * check` reporting drift that the `graft build` it recommends could not repair — the
+ * coarse mtime granularity a same-length edit inside one tick would leave `symgraph
+ * check` reporting drift that the `symgraph build` it recommends could not repair — the
  * documented fix, doing nothing, forever.
  */
 test("a build repairs an edit that leaves size and mtime untouched", async () => {

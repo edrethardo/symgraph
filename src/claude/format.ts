@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { graftLine } from '../context/savings.js';
+import { symgraphLine } from '../context/savings.js';
 import type { Stats, SessionState } from './state.js';
 import type { GraphV1, EdgeV1 } from '../graph/types.js';
 // The injection gate reuses the federation floors rather than inventing its own:
@@ -28,12 +28,12 @@ export function renderStatusline(
   ctx: { ctxPct: number | null },
 ): string[] {
   if (!stats) {
-    return [C.muted('◤ graft · not built · run ') + C.text('graft build')];
+    return [C.muted('◤ symgraph · not built · run ') + C.text('symgraph build')];
   }
-  const top = [C.muted('◤ ') + C.indigo('graft'), C.text(`${stats.nodeCount} nodes / ${stats.edgeCount} edges`)];
+  const top = [C.muted('◤ ') + C.indigo('symgraph'), C.text(`${stats.nodeCount} nodes / ${stats.edgeCount} edges`)];
   top.push(freshnessSegment(stats));
-  const calls = session?.graftCalls ?? 0;
-  if (calls > 0) top.push(C.indigo(`${calls.toLocaleString()} graft call${calls === 1 ? '' : 's'}`));
+  const calls = session?.symgraphCalls ?? 0;
+  if (calls > 0) top.push(C.indigo(`${calls.toLocaleString()} symgraph call${calls === 1 ? '' : 's'}`));
 
   const bottom: string[] = [];
   if (typeof ctx.ctxPct === 'number') bottom.push(C.text(`ctx ${ctx.ctxPct}%`));
@@ -68,7 +68,7 @@ export function formatBlastRadius(w: GraphV1, filePath: string, cap = 8): string
     return ` • ${e.relation} ← ${label}`;
   });
   const more = edges.length > cap ? `\n • +${edges.length - cap} more` : '';
-  return `[graft] blast radius for ${basename(filePath)}, who depends on it:\n${items.join('\n')}${more}`;
+  return `[symgraph] blast radius for ${basename(filePath)}, who depends on it:\n${items.join('\n')}${more}`;
 }
 
 export interface AskJson {
@@ -100,11 +100,11 @@ function retrievalBody(hits: AskJson['hits']): string {
   });
   // Two pack shapes: with inlined code the pack is substitutive (read here, don't
   // re-open); without code it is pointers-only — locators the agent may follow,
-  // pulling spans itself via `graft ask --source` (push→pull: per-prompt injected
+  // pulling spans itself via `symgraph ask --source` (push→pull: per-prompt injected
   // tokens are always fresh full-price input, so the pack stays tiny).
   const header = hits.some((h) => h.code)
-    ? '[graft] retrieved context, read these spans; do not re-open the files:'
-    : '[graft] starting points for this task: pull the code inline with `graft ask "<what you need>" --source`, trace impact with `graft callers <symbol>`, or search with `graft grep "<literal>"`:';
+    ? '[symgraph] retrieved context, read these spans; do not re-open the files:'
+    : '[symgraph] starting points for this task: pull the code inline with `symgraph ask "<what you need>" --source`, trace impact with `symgraph callers <symbol>`, or search with `symgraph grep "<literal>"`:';
   return `${header}\n${blocks.join('\n')}`;
 }
 
@@ -114,7 +114,7 @@ export function formatRetrieval(ask: AskJson, cap = 5): string | null {
   const body = retrievalBody(hits);
   // Marker, not a savings estimate: the old line claimed the tokens you'd have
   // spent reading every covered file in full, which nobody would have done.
-  return `${graftLine(ask.saved)}\n${body}`;
+  return `${symgraphLine(ask.saved)}\n${body}`;
 }
 
 /**
@@ -124,7 +124,7 @@ export function formatRetrieval(ask: AskJson, cap = 5): string | null {
  * it sat at 0.15, and a prompt measuring 0.165 / strong 0.033 cleared it by 0.015
  * and injected three test files for a question whose answer was elsewhere. The
  * comment it used to carry justified leaning low — "a wrongly-skipped pack is
- * recoverable, the agent pulls with `graft ask`" — and that assumption is exactly
+ * recoverable, the agent pulls with `symgraph ask`" — and that assumption is exactly
  * what a traced session falsified: the agent did not pull. It grepped 38 times.
  */
 export const INJECT_MIN_COVERAGE = 0.15;
@@ -138,15 +138,15 @@ const INJECTED_POINTERS_CAP = 40;
 export const NUDGE_CAP = 2;
 
 /** The line injected instead of a weak pack: names the command, says why, once.
- * Deliberately not an imperative about graft in general — it's a fact about this
+ * Deliberately not an imperative about symgraph in general — it's a fact about this
  * prompt's match quality plus the command that fixes it. */
 export function weakMatchNudge(s: SessionState, strong: number): string | null {
   const spent = s.nudges ?? 0;
   if (spent >= NUDGE_CAP) return null;
   s.nudges = spent + 1;
   return (
-    `[graft] no strong match for this prompt (name-field match ${strong.toFixed(2)}) — the graph ` +
-    `has more than this probe found. Run \`graft ask "<your task>" --source\` before grepping.`
+    `[symgraph] no strong match for this prompt (name-field match ${strong.toFixed(2)}) — the graph ` +
+    `has more than this probe found. Run \`symgraph ask "<your task>" --source\` before grepping.`
   );
 }
 
@@ -187,29 +187,29 @@ export function relevantRetrieval(ask: AskJson, s: SessionState, cap = 3): strin
 }
 
 export function formatOrientation(indexMd: string, budgetBytes = 1500, staleNote?: string): string {
-  // Always-on directive (cached, seen turn 0) so the agent reaches for graft's
+  // Always-on directive (cached, seen turn 0) so the agent reaches for symgraph's
   // commands without waiting for the discretionary skill to load. This is the
   // reliable steering channel (fires every session, unlike the discretionary
   // skill): it carries a one-line description of each tool AND the call-discipline
   // that keeps the agent from over-tooling. Positive only, names the tools,
   // forbids nothing.
   const directive =
-    `[graft] This repo is indexed by graft. To find, understand, or change code, reach for graft first; it answers from a prebuilt graph with exact file:line, faster than grep/read. Pick the ONE tool that fits and act on its answer. Most tasks need a single call. If one isn't enough, switch to the tool that fits the next need; don't call the same tool again and again or re-ask a question reworded:\n` +
-    `  • graft ask "<task>" --source: locate + understand. Ranked nodes with the code inlined at each file:line (the ≤8-line crux; add --full for the whole span). The default for "how does X work" / "where is Y".\n` +
-    `  • graft grep "<literal>": exhaustive find. Every occurrence, grouped by enclosing symbol; use when you need them ALL (ask is ranked top-N and misses instances).\n` +
-    `  • graft skeleton <file>: a file's whole API in ~200 tokens, every signature + span, ~10x cheaper than reading the file.\n` +
-    `  • graft callers <sym> [--direction out] [--depth N|all]: exact edges. Who calls it (default), what it calls (--direction out), or the full blast radius (--depth 2, or --depth all for every connected source). Run before you change a symbol.\n` +
-    `  • graft map: orientation for an unfamiliar repo, directory clusters, hubs, hotspots. map alone is the answer; don't then skeleton every subsystem it names.\n` +
+    `[symgraph] This repo is indexed by symgraph. To find, understand, or change code, reach for symgraph first; it answers from a prebuilt graph with exact file:line, faster than grep/read. Pick the ONE tool that fits and act on its answer. Most tasks need a single call. If one isn't enough, switch to the tool that fits the next need; don't call the same tool again and again or re-ask a question reworded:\n` +
+    `  • symgraph ask "<task>" --source: locate + understand. Ranked nodes with the code inlined at each file:line (the ≤8-line crux; add --full for the whole span). The default for "how does X work" / "where is Y".\n` +
+    `  • symgraph grep "<literal>": exhaustive find. Every occurrence, grouped by enclosing symbol; use when you need them ALL (ask is ranked top-N and misses instances).\n` +
+    `  • symgraph skeleton <file>: a file's whole API in ~200 tokens, every signature + span, ~10x cheaper than reading the file.\n` +
+    `  • symgraph callers <sym> [--direction out] [--depth N|all]: exact edges. Who calls it (default), what it calls (--direction out), or the full blast radius (--depth 2, or --depth all for every connected source). Run before you change a symbol.\n` +
+    `  • symgraph map: orientation for an unfamiliar repo, directory clusters, hubs, hotspots. map alone is the answer; don't then skeleton every subsystem it names.\n` +
     `  In a monorepo, add --in <path>/ to ask/grep/callers to scope to one sub-project; hits are labeled [scope/].\n` +
-    `  Already know the file or symbol to change? Go straight to it: graft grep "<symbol>", read the span, edit. Save ask for when you don't yet know where the code lives.\n` +
-    `  Refactor, rename, or multi-file change? Run graft callers <sym> --depth all FIRST to map every connected file; editing the primary file and stopping is the classic miss (platform siblings, a new file to extract).\n` +
-    `Each tool opens its output with a "[graft] answered from the index" line; when you used graft this turn, say so in one short line at the end of your reply (e.g. 🌱 graft · 3 calls). State only that graft was used and how many calls — never a tokens-saved figure. Never pipe a graft command through head/tail — it is already capped, and clipping drops that line.\n`;
+    `  Already know the file or symbol to change? Go straight to it: symgraph grep "<symbol>", read the span, edit. Save ask for when you don't yet know where the code lives.\n` +
+    `  Refactor, rename, or multi-file change? Run symgraph callers <sym> --depth all FIRST to map every connected file; editing the primary file and stopping is the classic miss (platform siblings, a new file to extract).\n` +
+    `Each tool opens its output with a "[symgraph] answered from the index" line; when you used symgraph this turn, say so in one short line at the end of your reply (e.g. 🌱 symgraph · 3 calls). State only that symgraph was used and how many calls — never a tokens-saved figure. Never pipe a symgraph command through head/tail — it is already capped, and clipping drops that line.\n`;
   const banner = staleNote ? `${staleNote}\n\n` : "";
-  return `${banner}${directive}\nrepo map (graft/INDEX.md):\n${indexMd.slice(0, budgetBytes)}`;
+  return `${banner}${directive}\nrepo map (symgraph/INDEX.md):\n${indexMd.slice(0, budgetBytes)}`;
 }
 
 export function renderSubagent(agentName: string, session: SessionState | null): string {
   const q = session?.perAgentQuery?.[agentName];
-  const tail = q ? SEP + C.muted('graft: ') + C.text(q) : '';
+  const tail = q ? SEP + C.muted('symgraph: ') + C.text(q) : '';
   return C.muted('◤ ') + C.indigo(agentName) + tail;
 }

@@ -83,7 +83,7 @@ class Base
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-php-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-php-"));
   writeFileSync(join(dir, "composer.json"), `{"name": "acme/app"}\n`);
   writeFileSync(join(dir, "app.php"), APP_PHP);
   writeFileSync(join(dir, "base.php"), BASE_PHP);
@@ -100,7 +100,7 @@ test("PHP extraction: classes, methods, interface, trait, enum, function", async
     const result = await buildGraph(dir); // $0, Tier-1 only
     assert.ok(result.languages.includes("php"), "languages should include php");
 
-    const graph = readGraph(wiringPath(join(dir, "graft")));
+    const graph = readGraph(wiringPath(join(dir, "symgraph")));
     assert.ok(graph, "wiring graph should be written");
 
     assert.equal(nodeById(graph!, "app.php#Widget")?.kind, "class");
@@ -126,7 +126,7 @@ test("PHP extraction: call, extends, and implements edges", async () => {
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     // `class Widget extends Base` resolves cross-file by class name
     assert.ok(
@@ -176,7 +176,7 @@ test("PHP extraction: trait use and typed-parameter receiver binding", async () 
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     // `use Loggable;` inside the class body resolves to the trait (modelled as implements)
     assert.ok(
@@ -203,7 +203,7 @@ test("PHP extraction: trait use and typed-parameter receiver binding", async () 
 // A variable-assigned closure is named after its variable, so its node id is
 // `…#<var>`. If that name is recomputed as the anonymous `{closure}` on a later
 // pass, the stored id and the recomputed id disagree — the exact drift that made
-// `graft check` report STALE on closure-heavy PHP right after a clean build
+// `symgraph check` report STALE on closure-heavy PHP right after a clean build
 // (reported against this branch on a ~2k-file Laravel repo). These closures are
 // shaped like that report: a top-level `static function … use (…)` and a
 // variable-assigned closure nested inside a method.
@@ -227,7 +227,7 @@ class Service
 `;
 
 function makeClosureFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-php-closures-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-php-closures-"));
   writeFileSync(join(dir, "composer.json"), `{"name": "acme/closures"}\n`);
   writeFileSync(join(dir, "closures.php"), CLOSURES_PHP);
   return dir;
@@ -257,7 +257,7 @@ test("PHP closures: closure names are stable across repeated extraction", () => 
   }
 });
 
-test("PHP closures: `graft check` stays fresh after build (no name drift)", async () => {
+test("PHP closures: `symgraph check` stays fresh after build (no name drift)", async () => {
   const dir = makeClosureFixture();
   try {
     await buildGraph(dir);
@@ -374,7 +374,7 @@ test("PHP extraction: closures become nodes and own the calls inside them", asyn
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     // an assigned arrow-fn is named after its variable (like a TS arrow-const)
     assert.equal(nodeById(graph, "app.php#make")?.kind, "function", "assigned closure `$make` is a function node");
@@ -440,7 +440,7 @@ class Widget {
 `;
 
 function makeAttributeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-php-attr-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-php-attr-"));
   writeFileSync(join(dir, "composer.json"), `{"name": "poc/app"}\n`);
   mkdirSync(join(dir, "Poc", "Attr"), { recursive: true });
   writeFileSync(join(dir, "Poc", "Attr", "Route.php"), ATTR_ROUTE_PHP);
@@ -453,7 +453,7 @@ test("PHP extraction: attribute usage resolves to references edges (#144)", asyn
   const dir = makeAttributeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     assert.ok(
       graph.edges.some(
@@ -514,7 +514,7 @@ function decorate(): Base
 `;
 
 function makeAnonFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-php-anon-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-php-anon-"));
   writeFileSync(join(dir, "composer.json"), `{"name": "poc/anon"}\n`);
   writeFileSync(join(dir, "poc.php"), ANON_PHP);
   return dir;
@@ -542,7 +542,7 @@ test("PHP anonymous classes: implements/extends edges resolve (#144)", async () 
   const dir = makeAnonFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     assert.ok(
       graph.edges.some(

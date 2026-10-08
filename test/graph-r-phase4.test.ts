@@ -19,10 +19,10 @@ import { readGraph, wiringPath } from "../src/graph/write.js";
 import type { GraphV1 } from "../src/graph/types.js";
 
 async function buildAndRead(files: Record<string, string>): Promise<{ dir: string; graph: GraphV1 }> {
-  const dir = mkdtempSync(join(tmpdir(), "graft-r-phase4-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-r-phase4-"));
   for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content);
   await buildGraph(dir);
-  const graph = readGraph(wiringPath(join(dir, "graft")))!;
+  const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
   return { dir, graph };
 }
 

@@ -1,3 +1,4 @@
+import '../util/env-compat.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
 import { join, basename, isAbsolute } from 'node:path';
@@ -6,7 +7,7 @@ import { readWiring } from './stats.js';
 import { formatBlastRadius, relevantRetrieval, formatOrientation } from './format.js';
 import { indexFreshness, staleBanner } from '../context/check.js';
 import { patchStats, readStats, acquireLock, readSession, writeSession, resolveContextDir } from './state.js';
-import { graftCliPath, claudeScriptPath } from './paths.js';
+import { symgraphCliPath, claudeScriptPath } from './paths.js';
 import { runUpkeep } from '../upkeep-run.js';
 import { runningVersion } from '../upkeep.js';
 import { scopeOf, scopesOfGraph } from '../graph/scopes.js';
@@ -17,7 +18,7 @@ import { scopeOf, scopesOfGraph } from '../graph/scopes.js';
 const MIN_PROMPT_CHARS = 12;
 
 function readStdin(): any {
-  const seam = process.env.GRAFT_TEST_STDIN;
+  const seam = process.env.SYMGRAPH_TEST_STDIN;
   const raw = seam !== undefined ? seam : safeReadFd0();
   try { return JSON.parse(raw); } catch { return {}; }
 }
@@ -26,27 +27,27 @@ function safeReadFd0(): string { try { return readFileSync(0, 'utf8'); } catch {
 function projectDir(input: any): string {
   return process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
 }
-export function underGraft(dir: string, file: string): boolean {
+export function underSymgraph(dir: string, file: string): boolean {
   const rel = file.startsWith(dir) ? file.slice(dir.length) : file;
-  return rel.replace(/^[/\\]+/, '').replace(/\\/g, '/').startsWith('graft/');
+  return rel.replace(/^[/\\]+/, '').replace(/\\/g, '/').startsWith('symgraph/');
 }
-/** Default budget for a graft child process invoked from a hook, matching the 8s
+/** Default budget for a symgraph child process invoked from a hook, matching the 8s
  * the installed hook entries carry. */
 const CHILD_TIMEOUT_MS = 8000;
 /** Headroom left for the hook's own work (read stdin, score, write session, emit)
- * after its `graft ask` child returns. */
+ * after its `symgraph ask` child returns. */
 const HOOK_OVERHEAD_MS = 2000;
 /** Floor, so a hand-edited tiny timeout can't leave the child no time at all. */
 const MIN_CHILD_TIMEOUT_MS = 4000;
 
 /**
- * How long the prompt hook may let `graft ask` run — derived from the budget that is
+ * How long the prompt hook may let `symgraph ask` run — derived from the budget that is
  * *actually installed* in this repo's `.claude/settings.json`, not from what the
  * current version of `settings-merge.ts` would install.
  *
- * A query now brings the graph up to date first, so `graft init` raises the
+ * A query now brings the graph up to date first, so `symgraph init` raises the
  * UserPromptSubmit budget to 15s to cover the one cold rebuild after an upgrade. But
- * `mergeGraftSettings` only runs during `graft init` — upgrading the npm package does
+ * `mergeSymgraphSettings` only runs during `symgraph init` — upgrading the npm package does
  * not re-run it. So every repo wired before that change keeps `"timeout": 8000`, and
  * hard-coding a 13s child there means Claude Code kills the hook first: `emit()` and
  * `writeSession()` never run, the turn gets no retrieval pack at all, and the SIGKILLed
@@ -61,7 +62,7 @@ export function promptAskTimeout(dir: string): number {
 
 /**
  * Every settings file Claude Code merges hook definitions from, for a session
- * rooted at `dir`. The per-repo file is not the only place graft's hooks can be
+ * rooted at `dir`. The per-repo file is not the only place symgraph's hooks can be
  * installed: declaring them once at the user level wires every repo on the
  * machine at once, and such a repo has no `.claude/settings.json` at all.
  */
@@ -74,7 +75,7 @@ function hookSettingsFiles(dir: string): string[] {
   ];
 }
 
-/** The timeout on one settings file's graft hook entry for `event`, or null if it
+/** The timeout on one settings file's symgraph hook entry for `event`, or null if it
  * can't be read (no settings file, hand-edited shape, unparseable JSON). */
 function hookTimeoutIn(file: string, event: string): number | null {
   try {
@@ -83,7 +84,7 @@ function hookTimeoutIn(file: string, event: string): number | null {
     if (!Array.isArray(blocks)) return null;
     for (const block of blocks) {
       for (const h of block?.hooks ?? []) {
-        if (typeof h?.command === 'string' && h.command.includes('graft-hooks.cjs') && typeof h.timeout === 'number') {
+        if (typeof h?.command === 'string' && h.command.includes('symgraph-hooks.cjs') && typeof h.timeout === 'number') {
           return h.timeout;
         }
       }
@@ -116,29 +117,29 @@ function installedHookTimeout(dir: string, event: string): number | null {
 }
 
 /**
- * Append `--dir <contextDir>` for the hooks' own `graft ask`/`graft check`
+ * Append `--dir <contextDir>` for the hooks' own `symgraph ask`/`symgraph check`
  * children — the one place in this file that spawns the CLI itself rather
- * than reading `graft/` off disk (which already resolves through
+ * than reading `symgraph/` off disk (which already resolves through
  * `resolveContextDir` inside `util/state.ts` and `claude/stats.ts`). A no-op
- * when `GRAFT_DIR` isn't set, so an unconfigured repo's spawned CLI sees
+ * when `SYMGRAPH_DIR` isn't set, so an unconfigured repo's spawned CLI sees
  * byte-identical argv to before this existed.
  */
 function withContextDirArg(dir: string, args: string[]): string[] {
-  return process.env.GRAFT_DIR ? [...args, '--dir', resolveContextDir(dir)] : args;
+  return process.env.SYMGRAPH_DIR ? [...args, '--dir', resolveContextDir(dir)] : args;
 }
 
-function graftJson(dir: string, args: string[], timeout: number = CHILD_TIMEOUT_MS): any | null {
+function symgraphJson(dir: string, args: string[], timeout: number = CHILD_TIMEOUT_MS): any | null {
   try {
-    // GRAFT_TEST_CLI is a test seam (mirrors GRAFT_TEST_STDIN/GRAFT_TEST_SYNC_RUN) so
-    // tests can point the prompt hook's `graft ask`/`graft check` calls at a stub
+    // SYMGRAPH_TEST_CLI is a test seam (mirrors SYMGRAPH_TEST_STDIN/SYMGRAPH_TEST_SYNC_RUN) so
+    // tests can point the prompt hook's `symgraph ask`/`symgraph check` calls at a stub
     // script and observe the exact args it was invoked with, instead of shelling
     // out to the real CLI (which isn't built relative to the TS source under test).
-    const cliPath = process.env.GRAFT_TEST_CLI ?? graftCliPath();
+    const cliPath = process.env.SYMGRAPH_TEST_CLI ?? symgraphCliPath();
     const out = execFileSync(process.execPath, [cliPath, ...args],
       { cwd: dir, encoding: 'utf8', timeout, stdio: ['ignore', 'pipe', 'ignore'] });
     return JSON.parse(out);
   } catch (e: any) {
-    // `graft check` exits non-zero when the graph is stale (by design) but still
+    // `symgraph check` exits non-zero when the graph is stale (by design) but still
     // prints valid JSON to stdout; recover it from the thrown error before giving up.
     if (e && typeof e.stdout === 'string' && e.stdout.trim()) {
       try { return JSON.parse(e.stdout); } catch { /* not JSON — fall through */ }
@@ -147,7 +148,7 @@ function graftJson(dir: string, args: string[], timeout: number = CHILD_TIMEOUT_
   }
 }
 function checkStaleCount(dir: string): number {
-  const r = graftJson(dir, withContextDirArg(dir, ['check', '.', '--json']));
+  const r = symgraphJson(dir, withContextDirArg(dir, ['check', '.', '--json']));
   const g = r?.graph ?? {};
   return (g.changed?.length ?? 0) + (g.added?.length ?? 0) + (g.removed?.length ?? 0);
 }
@@ -180,7 +181,7 @@ export function editedFilePath(input: any, dir: string): string | null {
 
 async function handlePostEdit(input: any, dir: string): Promise<void> {
   const file = editedFilePath(input, dir);
-  if (!file || underGraft(dir, file)) return;
+  if (!file || underSymgraph(dir, file)) return;
   patchStats(dir, { dirty: true, staleCount: checkStaleCount(dir), lastFile: basename(file) });
   const w = readWiring(dir);
   if (w) { const br = formatBlastRadius(w, file); if (br) emit('PostToolUse', br); }
@@ -212,25 +213,25 @@ export function lastFileScopeHint(dir: string, lastFile: string | null | undefin
       (n) => n.kind === 'file' && (n.path === lastFile || n.path.endsWith(`/${lastFile}`)),
     );
     if (matches.length === 0) {
-      console.error(`[graft] prompt hook: lastFile "${lastFile}" not found in the graph — skipping scope hint`);
+      console.error(`[symgraph] prompt hook: lastFile "${lastFile}" not found in the graph — skipping scope hint`);
       return null;
     }
     const prefixes = new Set(matches.map((n) => scopeOf(n.path, scopes).prefix));
     if (prefixes.size > 1) {
-      console.error(`[graft] prompt hook: lastFile "${lastFile}" matches more than one scope — skipping scope hint`);
+      console.error(`[symgraph] prompt hook: lastFile "${lastFile}" matches more than one scope — skipping scope hint`);
       return null;
     }
     const [prefix] = prefixes;
     return prefix === '' ? null : prefix; // root scope: nothing to narrow
   } catch (e: any) {
-    console.error(`[graft] prompt hook: scope hint lookup failed (${e?.message ?? e}) — skipping`);
+    console.error(`[symgraph] prompt hook: scope hint lookup failed (${e?.message ?? e}) — skipping`);
     return null;
   }
 }
 
-/** PostToolUse on a graft retrieval tool. Its rendered output opens with the
- * `[graft] answered from the index` marker; count those to keep the session's
- * graft-call tally, which the statusline shows as `N graft calls`, across CLI
+/** PostToolUse on a symgraph retrieval tool. Its rendered output opens with the
+ * `[symgraph] answered from the index` marker; count those to keep the session's
+ * symgraph-call tally, which the statusline shows as `N symgraph calls`, across CLI
  * and MCP. This used to sum the tokens-saved numbers the output carried, but
  * that estimate assumed you would otherwise have read every covered file in
  * full — an order of magnitude high — so the statusline reported a total that
@@ -239,21 +240,21 @@ export function lastFileScopeHint(dir: string, lastFile: string | null | undefin
  * it stays cheap on unrelated Bash calls. */
 function handleToolSavings(input: any, dir: string): void {
   const blob = JSON.stringify(input?.tool_response ?? input ?? '');
-  const calls = [...blob.matchAll(/\[graft\] answered from the index/g)].length;
+  const calls = [...blob.matchAll(/\[symgraph\] answered from the index/g)].length;
   if (calls <= 0) return;
   const id = input?.session_id || 'default';
   const s = readSession(dir, id);
-  s.graftCalls = (s.graftCalls ?? 0) + calls;
+  s.symgraphCalls = (s.symgraphCalls ?? 0) + calls;
   writeSession(dir, id, s);
 }
 
 function handleStop(dir: string): void {
   // sync-run.js ships next to this module inside the package, so it resolves in
-  // any repo that installs graft (not just graft's own). Defensive existsSync:
+  // any repo that installs symgraph (not just symgraph's own). Defensive existsSync:
   // if the package is somehow incomplete, skip rather than wedge on syncing:true.
-  // GRAFT_TEST_SYNC_RUN is a test seam (mirrors GRAFT_TEST_STDIN) so tests can point
+  // SYMGRAPH_TEST_SYNC_RUN is a test seam (mirrors SYMGRAPH_TEST_STDIN) so tests can point
   // this at a stub file inside their own sandbox instead of writing into src/claude/.
-  const syncRun = process.env.GRAFT_TEST_SYNC_RUN ?? claudeScriptPath('sync-run.js');
+  const syncRun = process.env.SYMGRAPH_TEST_SYNC_RUN ?? claudeScriptPath('sync-run.js');
   if (!existsSync(syncRun)) return;
   const stats = readStats(dir);
   if (stats?.dirty && acquireLock(dir)) {
@@ -269,7 +270,7 @@ export async function main(event: string): Promise<void> {
 
   if (event === 'session-start') {
     // Before anything is emitted: refresh this repo's wiring if it was written by
-    // an older graft, and pick up any cached "newer version on npm" answer.
+    // an older symgraph, and pick up any cached "newer version on npm" answer.
     // background:false — a hook must never touch the network; the CLI and the MCP
     // server fill that cache, this only reads it.
     const upkeep = runUpkeep(dir, runningVersion(), { background: false }).lines;
@@ -299,7 +300,7 @@ export async function main(event: string): Promise<void> {
     // Pointers-only, small, gated. No --source: per-prompt injected tokens are
     // fresh full-price input on every turn (unlike the cached SessionStart
     // orientation), so the pack carries locators, never inlined code — the agent
-    // pulls spans itself via `graft ask --source` when a pointer looks right.
+    // pulls spans itself via `symgraph ask --source` when a pointer looks right.
     // relevantRetrieval then drops the pack entirely when the prompt barely
     // overlaps the top hit or when every hit was already injected this session.
     const askArgs = withContextDirArg(dir, ['ask', prompt, '.', '--json', '-n', '3']);
@@ -307,7 +308,7 @@ export async function main(event: string): Promise<void> {
     // repo whose lastFile resolves cleanly to one scope — see lastFileScopeHint.
     const scopeHint = lastFileScopeHint(dir, readStats(dir)?.lastFile);
     if (scopeHint) askArgs.push('--in', scopeHint);
-    const ask = graftJson(dir, askArgs, promptAskTimeout(dir));
+    const ask = symgraphJson(dir, askArgs, promptAskTimeout(dir));
     if (!ask) return;
     const id = input.session_id || 'default';
     const s = readSession(dir, id);

@@ -59,7 +59,7 @@ const MORE_CPP = `void dualHelper() { }
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-cpp-inc-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-cpp-inc-"));
   for (const d of ["src/game", "src/util", "src/phys", "src/render", "src/other"]) {
     mkdirSync(join(dir, d), { recursive: true });
   }
@@ -76,7 +76,7 @@ function makeFixture(): string {
 test("C++ includes become imports edges; the closure breaks bare-call ties", async () => {
   const dir = makeFixture();
   await buildGraph(dir);
-  const graph: GraphV1 | null = readGraph(wiringPath(join(dir, "graft")));
+  const graph: GraphV1 | null = readGraph(wiringPath(join(dir, "symgraph")));
   assert.ok(graph, "wiring graph should be written");
 
   const imports = graph!.edges.filter((e) => e.relation === "imports").map((e) => e.target).sort();

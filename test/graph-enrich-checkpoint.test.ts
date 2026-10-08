@@ -39,8 +39,8 @@ function fixture(): { nodes: NodeV1[]; sources: Map<string, string> } {
 
 test("#128: the crux pass flushes partial progress mid-run (checkpoint), not only at the end", async () => {
   const { nodes, sources } = fixture();
-  const prev = process.env.GRAFT_CRUX_CHECKPOINT_MS;
-  process.env.GRAFT_CRUX_CHECKPOINT_MS = "0"; // flush on every completed file
+  const prev = process.env.SYMGRAPH_CRUX_CHECKPOINT_MS;
+  process.env.SYMGRAPH_CRUX_CHECKPOINT_MS = "0"; // flush on every completed file
   try {
     const readyAtCheckpoint: number[] = [];
     await enrichGraph(nodes, new Map(), sources, {
@@ -54,8 +54,8 @@ test("#128: the crux pass flushes partial progress mid-run (checkpoint), not onl
     assert.ok(readyAtCheckpoint.some((n) => n > 0 && n < FILES.length), "partial progress was flushable");
     assert.equal(nodes.filter((n) => n.summary_state === "ready").length, FILES.length, "all ended ready");
   } finally {
-    if (prev === undefined) delete process.env.GRAFT_CRUX_CHECKPOINT_MS;
-    else process.env.GRAFT_CRUX_CHECKPOINT_MS = prev;
+    if (prev === undefined) delete process.env.SYMGRAPH_CRUX_CHECKPOINT_MS;
+    else process.env.SYMGRAPH_CRUX_CHECKPOINT_MS = prev;
   }
 });
 

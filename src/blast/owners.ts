@@ -130,7 +130,7 @@ function git(root: string, args: string[]): string | null {
  * not whoever wrote the code. `%aN`/`%aE` rather than `%an`/`%ae` so git applies
  * the repository's `.mailmap` for us — which is the supported way to give a
  * contributor whose work address has no handle a noreply one, at no new config
- * cost to graft.
+ * cost to symgraph.
  */
 export function ownersFor(root: string, files: string[], opts: OwnerOptions = {}): Owner[] {
   const paths = [...files].sort().slice(0, MAX_PATHSPEC);
@@ -240,7 +240,7 @@ export function diffAuthors(root: string, base: string): string[] {
 /**
  * Whoever git would sign a commit as, here and now.
  *
- * The local counterpart of {@link diffAuthors}. `graft blast` with no `--base`
+ * The local counterpart of {@link diffAuthors}. `symgraph blast` with no `--base`
  * compares the working tree against HEAD, so there is no commit range to read
  * authors from — and without this, the one person guaranteed to have written the
  * change being examined is also the top name in its own "who to tag" list.

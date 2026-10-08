@@ -1,10 +1,10 @@
 /**
- * #252 — `graft build --deep --only-dir` must not walk the whole repo.
+ * #252 — `symgraph build --deep --only-dir` must not walk the whole repo.
  *
  * Tier-1 wiring already honors `--only-dir` (`filterByOnlyDirs`). The Tier-2
  * concept pass (`buildContext`) and its freshness check (`checkContext`) must
  * enumerate the same whitelist — otherwise out-of-scope files get summarized
- * and pulled into concept synthesis, and `graft check` reports them as added.
+ * and pulled into concept synthesis, and `symgraph check` reports them as added.
  *
  * No LLM: a recording summarizer is the queue. Wiring assertions reuse
  * `buildGraph` so this file cannot drift from `graph-only-dir.test.ts`.
@@ -17,7 +17,7 @@ import { buildContext } from "../src/context/build.js";
 import { checkContext } from "../src/context/check.js";
 import { buildGraph } from "../src/graph/build.js";
 import { readGraph, wiringPath } from "../src/graph/write.js";
-import { Graft } from "../src/engine.js";
+import { Symgraph } from "../src/engine.js";
 import { fakeProviders, tmpRepo } from "./helpers.js";
 import type { FileSummary, Summarizer, Synthesizer } from "../src/index.js";
 
@@ -62,7 +62,7 @@ function recording(): {
 }
 
 function manifestPaths(dir: string): string[] {
-  const manifest = JSON.parse(readFileSync(join(dir, "graft", "manifest.json"), "utf8")) as {
+  const manifest = JSON.parse(readFileSync(join(dir, "symgraph", "manifest.json"), "utf8")) as {
     files: Array<{ path: string }>;
   };
   return manifest.files.map((f) => f.path).sort();
@@ -138,11 +138,11 @@ test("#252: checkContext does not report excluded files as coverage after a limi
   }
 });
 
-test("#252: Graft.init forwards onlyDirs (the --deep CLI path)", async () => {
+test("#252: Symgraph.init forwards onlyDirs (the --deep CLI path)", async () => {
   const dir = repoWithOutOfScope();
   const rec = recording();
   try {
-    const engine = new Graft({ summarizer: rec.summarizer, synthesizer: rec.synthesizer });
+    const engine = new Symgraph({ summarizer: rec.summarizer, synthesizer: rec.synthesizer });
     await engine.init(dir, { onlyDirs: ["src"] });
     assert.deepEqual([...rec.summarized].sort(), ["src/a.ts"]);
   } finally {
@@ -155,7 +155,7 @@ test("#252: wiring still indexes only the whitelist when both layers run", async
   try {
     await buildContext(dir, { model: "fake", ...fakeProviders(), onlyDirs: ["src"] });
     await buildGraph(dir, { onlyDirs: ["src"] });
-    const graph = readGraph(wiringPath(join(dir, "graft")));
+    const graph = readGraph(wiringPath(join(dir, "symgraph")));
     assert.ok(graph, "expected a wiring graph");
     const paths = new Set(graph!.nodes.map((n) => n.path));
     assert.ok(paths.has("src/a.ts"), "src stays in the wiring graph");

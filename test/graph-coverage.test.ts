@@ -24,7 +24,7 @@ import { mcpInstructions } from "../src/mcp/instructions.js";
 import type { GrepResult } from "../src/search/grep.js";
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-coverage-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-coverage-"));
   writeFileSync(join(dir, "a.ts"), "export function hello(): number { return 1; }\n");
   writeFileSync(join(dir, "schema.sql"), "SELECT snap_entity_to_floor();\n");
   writeFileSync(join(dir, "report.sql"), "SELECT think();\n");
@@ -41,16 +41,16 @@ test("build reports code files no parser covers, and records them in the graph",
   // .md/.txt are not code and must NOT be counted as skipped.
   assert.deepEqual(result.skipped, [{ ext: ".sql", files: 2 }]);
 
-  const graph = readGraph(wiringPath(join(dir, "graft")));
+  const graph = readGraph(wiringPath(join(dir, "symgraph")));
   assert.deepEqual(graph?.meta.unindexed, [{ ext: ".sql", files: 2 }]);
 });
 
 test("a fully supported repo skips nothing and records nothing", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-coverage-clean-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-coverage-clean-"));
   writeFileSync(join(dir, "a.ts"), "export function hello(): number { return 1; }\n");
   const result = await buildGraph(dir);
   assert.deepEqual(result.skipped, []);
-  const graph = readGraph(wiringPath(join(dir, "graft")));
+  const graph = readGraph(wiringPath(join(dir, "symgraph")));
   assert.equal(graph?.meta.unindexed, undefined);
 });
 
@@ -138,7 +138,7 @@ test("callers on an inferred-only language warns about undercount, not 'no calle
   const note = looseNoteFor("in", "step", 1, { edgeless: true });
   assert.ok(note.includes("inferred"), note);
   assert.ok(note.includes("may undercount"), note);
-  assert.ok(note.includes("graft grep"), note);
+  assert.ok(note.includes("symgraph grep"), note);
   assert.ok(!note.includes("no indexed callers"), note);
 
   const normal = looseNoteFor("in", "step", 1);

@@ -1,5 +1,5 @@
 /**
- * What `graft init` *would* write, computed before anything is written.
+ * What `symgraph init` *would* write, computed before anything is written.
  *
  * The picker and `--dry-run` both need the exact path list up front, so every
  * writer in the init path (instruction files, MCP configs, hooks, the Claude
@@ -55,12 +55,12 @@ function instructionTarget(repo: string, host: HostTarget): PlannedWrite {
     path: join(repo, host.relPath),
     scope: 'repo',
     kind: 'instruction',
-    what: host.kind === 'owned' ? 'graft-owned file' : 'fenced graft section',
+    what: host.kind === 'owned' ? 'symgraph-owned file' : 'fenced symgraph section',
   };
 }
 
 /**
- * Every host graft can wire, each with the full set of files selecting it would
+ * Every host symgraph can wire, each with the full set of files selecting it would
  * touch. Claude Code comes first — it's the deep integration and the picker's
  * default. `ids`, when given, restricts the plan to those hosts.
  */

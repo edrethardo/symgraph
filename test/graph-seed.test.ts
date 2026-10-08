@@ -2,7 +2,7 @@
  * Seeding a git worktree's graph from its parent checkout.
  *
  * Two things have to hold. The worktree *shape* detection must be exactly right —
- * it decides whether graft reaches into a neighbouring directory at all, and a
+ * it decides whether symgraph reaches into a neighbouring directory at all, and a
  * submodule has the same `.git`-is-a-file shape while being a different repo — and
  * the copy must leave the parent checkout untouched while ending up with a graph
  * that describes *this* checkout's code, not the parent's.
@@ -27,7 +27,7 @@ import { tmpRepo } from "./helpers.js";
 const MATH = "export function add(a: number, b: number): number {\n  return a + b;\n}\n";
 const MUL = "export function mul(a: number, b: number): number {\n  return a * b;\n}\n";
 
-const outOf = (d: string): string => join(d, "graft");
+const outOf = (d: string): string => join(d, "symgraph");
 /**
  * Realpath'd (see {@link tmpRepo}), which this file needs more than most: git writes
  * the *resolved* absolute path into a worktree's `.git` pointer, so `seededFrom` comes
@@ -119,7 +119,7 @@ test("mainWorktreeRoot survives every broken .git it can be handed", () => {
 });
 
 /* ------------------------------------------------------------------ *
- * The real thing: git makes the worktree, graft seeds it
+ * The real thing: git makes the worktree, symgraph seeds it
  * ------------------------------------------------------------------ */
 
 /** Isolated from the developer's own git config, so CI and a laptop behave alike. */
@@ -132,21 +132,21 @@ function git(cwd: string, ...args: string[]): string {
       ...process.env,
       GIT_CONFIG_GLOBAL: "/dev/null",
       GIT_CONFIG_SYSTEM: "/dev/null",
-      GIT_AUTHOR_NAME: "graft test",
+      GIT_AUTHOR_NAME: "symgraph test",
       GIT_AUTHOR_EMAIL: "test@example.invalid",
-      GIT_COMMITTER_NAME: "graft test",
+      GIT_COMMITTER_NAME: "symgraph test",
       GIT_COMMITTER_EMAIL: "test@example.invalid",
     },
   });
 }
 
-/** A committed repo with one source file and `graft/` gitignored, as a real repo has. */
+/** A committed repo with one source file and `symgraph/` gitignored, as a real repo has. */
 function gitRepo(): string {
   const d = tmp("repo");
   git(d, "init", "-b", "main");
   mkdirSync(join(d, "src"), { recursive: true });
   writeFileSync(join(d, "src", "math.ts"), MATH);
-  writeFileSync(join(d, ".gitignore"), "graft/\n");
+  writeFileSync(join(d, ".gitignore"), "symgraph/\n");
   git(d, "add", "-A");
   git(d, "commit", "-m", "init");
   return d;
@@ -179,7 +179,7 @@ test("a git worktree starts with no graph, and one query gives it a correct one"
   const r = await ensureFreshGraph(wt);
   assert.equal(existsSync(wiringPath(outOf(wt))), true, "the worktree now has its own graph");
   assert.match(refreshNote(r) ?? "", /copied the graph from the main checkout/);
-  assert.match(refreshNote(r) ?? "", /^\[graft\] refreshed the graph \(1 file changed\)/);
+  assert.match(refreshNote(r) ?? "", /^\[symgraph\] refreshed the graph \(1 file changed\)/);
 
   const graph = readGraph(wiringPath(outOf(wt)));
   assert.ok(
@@ -190,7 +190,7 @@ test("a git worktree starts with no graph, and one query gives it a correct one"
 
   // A query writes only what a query reads (the rule in refresh.ts's header). The
   // parent's cards describe the parent's *branch*, and nothing on the query path would
-  // ever correct them, so they must not travel — `graft build` regenerates them below.
+  // ever correct them, so they must not travel — `symgraph build` regenerates them below.
   assert.equal(existsSync(join(outOf(wt), "INDEX.md")), false, "a query writes no markdown");
   assert.equal(existsSync(join(outOf(wt), "graph-extraction-and-loading.md")), false, "nor cards");
 
@@ -246,7 +246,7 @@ test("the MCP tool answers from a seeded worktree instead of refusing", async ()
   await buildGraph(main);
   const wt = addWorktree(main, "mcp");
 
-  const res = await callTool(wt, "graft_find_code", { query: "add two numbers" });
+  const res = await callTool(wt, "symgraph_find_code", { query: "add two numbers" });
   assert.equal(res.isError, false);
   assert.doesNotMatch(res.text, /no graph found/);
   assert.match(res.text, /math\.ts/);
@@ -255,12 +255,12 @@ test("the MCP tool answers from a seeded worktree instead of refusing", async ()
   rmSync(wt, { recursive: true, force: true });
 });
 
-test("GRAFT_NO_SEED leaves the worktree exactly as it was", async () => {
+test("SYMGRAPH_NO_SEED leaves the worktree exactly as it was", async () => {
   const main = gitRepo();
   await buildGraph(main);
   const wt = addWorktree(main, "off");
 
-  process.env.GRAFT_NO_SEED = "1";
+  process.env.SYMGRAPH_NO_SEED = "1";
   try {
     const r = await ensureFreshGraph(wt);
     assert.equal(existsSync(wiringPath(outOf(wt))), false, "no graph copied");
@@ -269,10 +269,10 @@ test("GRAFT_NO_SEED leaves the worktree exactly as it was", async () => {
     // say "no graph", it says "no matching nodes" — which reads like "your question
     // was bad" rather than "there is nothing to search". Worth pinning so the failure
     // mode this feature removes stays recognisable.
-    const res = await callTool(wt, "graft_find_code", { query: "add" });
+    const res = await callTool(wt, "symgraph_find_code", { query: "add" });
     assert.match(res.text, /no matching nodes/, "back to the pre-seeding behaviour");
   } finally {
-    delete process.env.GRAFT_NO_SEED;
+    delete process.env.SYMGRAPH_NO_SEED;
   }
 
   rmSync(main, { recursive: true, force: true });
@@ -315,7 +315,7 @@ test("seedGraph declines a --dir override and a checkout that already has a grap
   rmSync(wt, { recursive: true, force: true });
 });
 
-test("a plain repo with no parent checkout is left to `graft build`", async () => {
+test("a plain repo with no parent checkout is left to `symgraph build`", async () => {
   const solo = gitRepo(); // a main checkout, never built
   const r = await ensureFreshGraph(solo);
   assert.equal(existsSync(wiringPath(outOf(solo))), false, "no surprise full build under a query");
@@ -323,7 +323,7 @@ test("a plain repo with no parent checkout is left to `graft build`", async () =
   rmSync(solo, { recursive: true, force: true });
 });
 
-test("`graft build` in a worktree starts from the parent's graph, not from scratch", async () => {
+test("`symgraph build` in a worktree starts from the parent's graph, not from scratch", async () => {
   const main = gitRepo();
   await buildGraph(main);
   const wt = addWorktree(main, "build");

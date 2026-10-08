@@ -19,10 +19,10 @@ function nodeById(graph: GraphV1, id: string): NodeV1 | undefined {
 }
 
 async function buildAndRead(files: Record<string, string>): Promise<{ dir: string; graph: GraphV1 }> {
-  const dir = mkdtempSync(join(tmpdir(), "graft-r-phase3-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-r-phase3-"));
   for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content);
   await buildGraph(dir);
-  const graph = readGraph(wiringPath(join(dir, "graft")))!;
+  const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
   return { dir, graph };
 }
 

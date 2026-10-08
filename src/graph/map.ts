@@ -1,5 +1,5 @@
 /**
- * `graft map` core: a deterministic, token-budgeted repo orientation —
+ * `symgraph map` core: a deterministic, token-budgeted repo orientation —
  * directory clusters, per-directory hubs, and global hotspots — computed
  * purely from the wiring graph (no LLM, no I/O beyond the already-loaded
  * `GraphV1`).
@@ -11,7 +11,7 @@
  * one refinement pass: split one level deeper (`src` → `src/ask`,
  * `src/graph`, …). Hubs and hotspots rank by incoming `WALK_RELATIONS`
  * edges (shared with `graphrank.ts`/`grep.ts`, so "important" means the same
- * thing everywhere in graft) — never by lines of code or heuristics that
+ * thing everywhere in symgraph) — never by lines of code or heuristics that
  * drift from the actual wiring.
  *
  * Pure and synchronous: same fixture-testable shape as `grep.ts` — no CLI or
@@ -22,7 +22,7 @@ import type { GraphV1, NodeV1 } from "./types.js";
 import { languageLabelOf } from "./extract.js";
 import { WALK_RELATIONS } from "./relations.js";
 import { scopeLabel, scopeOf, scopesOfGraph } from "./scopes.js";
-import { withGraftLine, coverageFor, type Coverage } from "../context/savings.js";
+import { withSymgraphLine, coverageFor, type Coverage } from "../context/savings.js";
 
 export interface Hub {
   name: string;
@@ -105,8 +105,8 @@ function dirKey(path: string, depth: number): string {
 }
 
 /** Incoming WALK_RELATIONS edge count per target id — the same "coupling"
- * metric `grep.ts` uses, so a hub in `graft map` means the same thing as a
- * high-inDegree group in `graft grep`. */
+ * metric `grep.ts` uses, so a hub in `symgraph map` means the same thing as a
+ * high-inDegree group in `symgraph grep`. */
 function computeInDegree(graph: GraphV1): Map<string, number> {
   const deg = new Map<string, number>();
   for (const e of graph.edges) {
@@ -346,5 +346,5 @@ export function formatRepoMap(map: RepoMap): string {
   lines.push(`hotspots: ${map.hotspots.map(formatHotspot).join("  ")}`);
 
   const body = lines.join("\n");
-  return withGraftLine(body, map.saved) + "\n";
+  return withSymgraphLine(body, map.saved) + "\n";
 }

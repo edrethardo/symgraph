@@ -1,11 +1,11 @@
 /**
  * mtime-keyed in-process cache over the two readers `ask()` calls on every
  * query: the wiring graph (`readGraph`) and the ask sidecar (`readAskIndex`).
- * `graft ask` re-parses these from disk on every invocation; in a long-lived
- * process — the MCP server, or `graft ask` invoked repeatedly in one process —
+ * `symgraph ask` re-parses these from disk on every invocation; in a long-lived
+ * process — the MCP server, or `symgraph ask` invoked repeatedly in one process —
  * that means re-parsing the same ~tens-of-MB JSON on every tool call.
  *
- * Keyed by `(path, mtimeMs, size)` from `statSync`, so a rebuild (`graft
+ * Keyed by `(path, mtimeMs, size)` from `statSync`, so a rebuild (`symgraph
  * build`) is picked up on the very next call with no polling and no TTL: the
  * stat is cheap relative to the parse it guards, and a changed mtime or size
  * invalidates the entry. A missing file returns null and is never cached — the
@@ -13,7 +13,7 @@
  * immediately (no negative caching).
  *
  * **Cache invalidation assumption:** This strategy assumes filesystem mtime
- * resolution is finer than build cadence. This is safe because `graft build`
+ * resolution is finer than build cadence. This is safe because `symgraph build`
  * rewrites the entire output file atomically, so same-size rewrites within a
  * single mtime tick (which would serve stale data) are infeasible in practice.
  * On APFS (macOS) mtime is nanosecond-granular and a build takes milliseconds,

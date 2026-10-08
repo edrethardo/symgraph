@@ -8,7 +8,7 @@ import {
   readSession, writeSession, acquireLock, releaseLock, cacheDir, LOCK_STALE_MS, writeJsonAtomic,
 } from '../src/claude/state.js';
 
-function fresh(): string { return mkdtempSync(join(tmpdir(), 'graft-state-')); }
+function fresh(): string { return mkdtempSync(join(tmpdir(), 'symgraph-state-')); }
 
 test('stats round-trip and patch merge', () => {
   const d = fresh();
@@ -24,11 +24,11 @@ test('stats round-trip and patch merge', () => {
 test('session defaults and round-trip', () => {
   const d = fresh();
   const s = readSession(d, 'abc');
-  assert.deepEqual(s, { lastQuery: null, perAgentQuery: {}, graftReads: 0, sourceReads: 0, graftCalls: 0, injectedPointers: [], nudges: 0 });
-  s.lastQuery = 'pkce'; s.graftReads = 2;
+  assert.deepEqual(s, { lastQuery: null, perAgentQuery: {}, symgraphReads: 0, sourceReads: 0, symgraphCalls: 0, injectedPointers: [], nudges: 0 });
+  s.lastQuery = 'pkce'; s.symgraphReads = 2;
   writeSession(d, 'abc', s);
   assert.equal(readSession(d, 'abc').lastQuery, 'pkce');
-  assert.equal(readSession(d, 'xyz').graftReads, 0, 'other sessions isolated');
+  assert.equal(readSession(d, 'xyz').symgraphReads, 0, 'other sessions isolated');
 });
 
 test('lock is exclusive then releasable', () => {
@@ -63,7 +63,7 @@ test('writeJsonAtomic leaves no scratch file behind when the write fails', () =>
   mkdirSync(target);
 
   // Every CLI invocation is a new pid, so a repeatedly failing write would leave one
-  // full-size `<path>.<pid>.tmp` per attempt, and nothing in graft ever lists these
+  // full-size `<path>.<pid>.tmp` per attempt, and nothing in symgraph ever lists these
   // directories to clean them up — on a nearly-full disk that accelerates the ENOSPC
   // that caused it.
   assert.throws(() => writeJsonAtomic(target, { pad: 'x'.repeat(1024) }));

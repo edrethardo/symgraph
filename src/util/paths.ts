@@ -1,7 +1,7 @@
 /**
  * Repo-relative paths, always posix.
  *
- * Every path graft stores — node ids, `node.path`, extract-cache keys, the
+ * Every path symgraph stores — node ids, `node.path`, extract-cache keys, the
  * freshness fingerprint, the card manifest — is repo-relative and separated by
  * `/` on every platform. That is not cosmetic: the query layer parses these
  * strings with `/` as the separator, and does it by hand rather than through
@@ -32,7 +32,7 @@ export function toPosixPath(p: string): string {
 
 /**
  * `relative(from, to)`, normalized to posix — the canonical form of every path
- * graft stores. Use this rather than bare `relative` for anything that lands in
+ * symgraph stores. Use this rather than bare `relative` for anything that lands in
  * the graph, a cache key, or a manifest. Bare `relative` is still right for
  * text shown in the terminal, where a native separator is what the platform's
  * users expect.

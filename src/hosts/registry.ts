@@ -1,10 +1,10 @@
 /**
- * Registry of AI coding hosts Graft can write instructions for.
+ * Registry of AI coding hosts Symgraph can write instructions for.
  * Adding a host = adding one entry here (plus a renderer if it needs
  * a new file format).
  *
  * kind: 'section' → upsert the fenced block into a shared file the user owns.
- * kind: 'owned'   → graft owns the whole file; overwrite it each run.
+ * kind: 'owned'   → symgraph owns the whole file; overwrite it each run.
  */
 import { join } from 'node:path';
 import { instructionBody, cursorRule, kiroSteering, windsurfRule } from './instructions.js';
@@ -42,7 +42,7 @@ export const HOSTS: HostTarget[] = [
     id: 'adal',
     name: 'AdaL',
     kind: 'owned',
-    relPath: join('.adal', 'skills', 'graft', 'SKILL.md'),
+    relPath: join('.adal', 'skills', 'symgraph', 'SKILL.md'),
     content: skillTemplate,
     detect: (p) => p.dirExists(join(p.home, '.adal')) || p.dirExists(join(p.repo, '.adal')),
   },
@@ -50,7 +50,7 @@ export const HOSTS: HostTarget[] = [
     id: 'cursor',
     name: 'Cursor',
     kind: 'owned',
-    relPath: join('.cursor', 'rules', 'graft.mdc'),
+    relPath: join('.cursor', 'rules', 'symgraph.mdc'),
     content: cursorRule,
     detect: (p) => p.dirExists(join(p.home, '.cursor')) || p.dirExists(join(p.repo, '.cursor')),
   },
@@ -66,7 +66,7 @@ export const HOSTS: HostTarget[] = [
     id: 'grok',
     name: 'Grok (xAI)',
     kind: 'owned',
-    relPath: join('.grok', 'skills', 'graft', 'SKILL.md'),
+    relPath: join('.grok', 'skills', 'symgraph', 'SKILL.md'),
     content: skillTemplate,
     detect: (p) => p.dirExists(join(p.home, '.grok')) || p.dirExists(join(p.repo, '.grok')),
   },
@@ -77,7 +77,7 @@ export const HOSTS: HostTarget[] = [
     relPath: 'AGENTS.md',
     content: instructionBody,
     // Hermes is repo-aware: it reads AGENTS.md at the repo root (and the
-    // Graft-for-Hermes plugin keeps the graph fresh on every session start).
+    // Symgraph-for-Hermes plugin keeps the graph fresh on every session start).
     detect: (p) =>
       p.dirExists(join(p.home, '.hermes')) ||
       p.dirExists(join(p.home, 'AppData', 'Local', 'hermes')) ||
@@ -109,7 +109,7 @@ export const HOSTS: HostTarget[] = [
     id: 'kiro',
     name: 'Kiro',
     kind: 'owned',
-    relPath: join('.kiro', 'steering', 'graft.md'),
+    relPath: join('.kiro', 'steering', 'symgraph.md'),
     content: kiroSteering,
     detect: (p) => p.dirExists(join(p.home, '.kiro')) || p.dirExists(join(p.repo, '.kiro')),
   },
@@ -117,7 +117,7 @@ export const HOSTS: HostTarget[] = [
     id: 'windsurf',
     name: 'Windsurf',
     kind: 'owned',
-    relPath: join('.windsurf', 'rules', 'graft.md'),
+    relPath: join('.windsurf', 'rules', 'symgraph.md'),
     content: windsurfRule,
     detect: (p) => p.dirExists(join(p.home, '.codeium', 'windsurf')) || p.dirExists(join(p.repo, '.windsurf')),
   },

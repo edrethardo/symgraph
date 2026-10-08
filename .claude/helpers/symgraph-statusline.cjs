@@ -6,10 +6,10 @@ const { execFileSync } = require('child_process');
 const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const BAKED = "/Users/shrishdwivedi/Documents/Context graphs/context-graph-engine/dist/claude";
 
-// The dist/claude dir of @nanonets/graft resolved from a base whose node_modules is searched.
+// The dist/claude dir of symgraph resolved from a base whose node_modules is searched.
 function fromPkg(base) {
   try {
-    const pkg = require.resolve('@nanonets/graft/package.json', { paths: [base] });
+    const pkg = require.resolve('symgraph/package.json', { paths: [base] });
     return path.join(path.dirname(pkg), 'dist', 'claude');
   } catch { return null; }
 }
@@ -27,7 +27,7 @@ function candidates() {
   if (BAKED) out.push(BAKED);
   const local = fromPkg(dir); if (local) out.push(local);
   const legacy = fromPkg(path.join(path.dirname(process.execPath), '..', 'lib')); if (legacy) out.push(legacy);
-  const gr = globalRoot(); if (gr) out.push(path.join(gr, '@nanonets', 'graft', 'dist', 'claude'));
+  const gr = globalRoot(); if (gr) out.push(path.join(gr, 'symgraph', 'dist', 'claude'));
   return out;
 }
 
@@ -39,4 +39,4 @@ function entry(name) {
   return path.join(dir, 'dist', 'claude', name); // last-ditch; import will no-op if absent
 }
 
-import(pathToFileURL(entry("statusline.js")).href).then((m) => m.main()).catch(() => { /* graft unavailable — no-op */ });
+import(pathToFileURL(entry("statusline.js")).href).then((m) => m.main()).catch(() => { /* symgraph unavailable — no-op */ });

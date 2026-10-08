@@ -1,7 +1,7 @@
 /**
  * Tests for the `ask` build-time sidecar (`.cache/ask-index.json`).
  *
- * `graft build` writes token/document-frequency bags once so `ask` doesn't
+ * `symgraph build` writes token/document-frequency bags once so `ask` doesn't
  * re-tokenize the whole corpus per query. These tests pin down the contract
  * that makes the sidecar safe to ship: it is a byte-for-byte reproduction of
  * live tokenization, consuming it never changes a single `ask` result (hits
@@ -24,7 +24,7 @@ import type { GraphV1, NodeV1 } from "../src/graph/types.js";
 /** A small multi-file fixture with enough overlapping vocabulary that IDF and
  * BM25 actually differentiate hits, so a parity test on scores is meaningful. */
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-index-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-index-"));
   writeFileSync(
     join(dir, "auth.ts"),
     `/** Validate an incoming API request's auth token. */\n` +
@@ -222,7 +222,7 @@ test("an unparseable sidecar file falls back to live tokenization", async () => 
 });
 
 test("A3: a duplicate-named definition still gets its own ask-index doc (unique ids -> docs.length === nodes.length)", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-index-dup-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-index-dup-"));
   try {
     writeFileSync(
       join(dir, "dup.ts"),
@@ -252,7 +252,7 @@ test("A3: a duplicate-named definition still gets its own ask-index doc (unique 
 });
 
 test("readAskIndex returns null when the sidecar is simply missing", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-index-missing-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-index-missing-"));
   try {
     assert.equal(readAskIndex(contextDirFor(dir)), null);
   } finally {
@@ -261,7 +261,7 @@ test("readAskIndex returns null when the sidecar is simply missing", () => {
 });
 
 test("readAskIndex returns null when docCount doesn't match docs.length", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-index-doccount-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-index-doccount-"));
   try {
     const outDir = contextDirFor(dir);
     const idxPath = askIndexPath(outDir);
@@ -338,7 +338,7 @@ test("ask WITH sidecar: identical hits/scores whether the underlying wiring.json
 });
 
 test("ask WITHOUT sidecar on a SLIM graph: no crash, body contributions absent, name matching still works", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-index-slim-nosidecar-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-index-slim-nosidecar-"));
   try {
     // "stripe" appears only inside checkout's body — never in its name/signature.
     writeFileSync(
@@ -373,7 +373,7 @@ test("ask WITHOUT sidecar on a SLIM graph: no crash, body contributions absent, 
 });
 
 test("ask on an OLD fat graph (body_text present, no sidecar): unchanged behavior — body_text still used", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-index-old-fat-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-index-old-fat-"));
   try {
     // Build a wiring.json by hand via extractFile directly (bypassing
     // buildGraph/writeGraph entirely), so body_text survives on disk exactly

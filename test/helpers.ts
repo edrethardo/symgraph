@@ -28,7 +28,7 @@ import type { Summarizer, Synthesizer, SynthNode, SynthLink, FileSummary } from 
  * `.native` goes through the OS (`GetFinalPathNameByHandle`) and does.
  */
 export function tmpRepo(tag: string): string {
-  return realpathSync.native(mkdtempSync(join(tmpdir(), `graft-${tag}-`)));
+  return realpathSync.native(mkdtempSync(join(tmpdir(), `symgraph-${tag}-`)));
 }
 
 /**
@@ -84,7 +84,7 @@ export function runCli(args: string[], opts: { home?: string; timeoutMs?: number
   }) as CliRun;
   res.describe = () =>
     [
-      `graft ${args.join(" ")}`,
+      `symgraph ${args.join(" ")}`,
       `  status: ${res.status}${res.signal ? ` (signal ${res.signal})` : ""}`,
       `  stdout: ${JSON.stringify(res.stdout ?? "")}`,
       `  stderr: ${JSON.stringify(res.stderr ?? "")}`,

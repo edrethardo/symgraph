@@ -1,12 +1,12 @@
 /**
- * `graft viz --export <dir>`: the same viewer, as one self-contained HTML file.
+ * `symgraph viz --export <dir>`: the same viewer, as one self-contained HTML file.
  *
  * This exists so a PR comment has somewhere real to point. A Mermaid diagram in a
  * comment can hold about five circles before it stops being readable, and it can
  * never hold the thing a reviewer actually wants next — click an area, see its
  * dependent symbols at exact `file:line`. Every other tool in this space solved
  * that the same way: keep a small table in the comment and link out to a hosted
- * view. Exporting rather than hosting keeps graft's promise intact — no account, no
+ * view. Exporting rather than hosting keeps symgraph's promise intact — no account, no
  * server, no telemetry; the artifact is a file you can open with `file://`, publish
  * to GitHub Pages, or attach to a build.
  *
@@ -29,7 +29,7 @@ export interface VizExportOptions {
   subtitle?: string;
   /**
    * Context graph to inline instead of assembling one from the deep tier's concept
-   * files. `graft blast --export-viz` passes the blast radius itself, which is how a
+   * files. `symgraph blast --export-viz` passes the blast radius itself, which is how a
    * PR gets a Context tab worth opening without a `--deep` build.
    */
   contextGraph?: VizGraph;
@@ -37,7 +37,7 @@ export interface VizExportOptions {
    * Tabs the page offers. Default: all three.
    *
    * A blast page passes `["context"]`. The Code tab there is the repo's whole
-   * wiring graph — 1,377 nodes on graft itself, a hairball that answers nothing
+   * wiring graph — 1,377 nodes on symgraph itself, a hairball that answers nothing
    * about the pull request, and ~95% of the exported megabyte — and Outline is the
    * repo's file tree. Dropping them makes the page a tenth of the size and removes
    * two tabs a reviewer has no reason to open.
@@ -122,7 +122,7 @@ export function exportViz(opts: VizExportOptions): VizExportResult {
   };
 
   const data = [
-    "<script>window.__GRAFT_DATA__ = {",
+    "<script>window.__SYMGRAPH_DATA__ = {",
     `  contextGraph: ${inlineJson(contextGraph)},`,
     `  codeGraph: ${inlineJson(code)}`,
     "};</script>",

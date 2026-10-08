@@ -508,7 +508,7 @@ export function mintId(base: string, minted: Set<string>): string {
  * tree-sitter-php 0.23.x cannot parse a `const` inside an enum body (#145). An
  * array initializer collapses the whole `enum_declaration` into ERROR; the
  * method is recovered as a sibling `function_definition`. 0.24.2 parses this
- * natively but is ABI 15 and cannot load on Graft's tree-sitter 0.21.1.
+ * natively but is ABI 15 and cannot load on Symgraph's tree-sitter 0.21.1.
  *
  * Bound: only an ERROR that already contains `enum_case` + `name` is treated as
  * a collapsed enum. Only `const_declaration` / `function_definition` /
@@ -843,7 +843,7 @@ function walk(node: Parser.SyntaxNode, ctx: WalkCtx, out: NodeV1[], edges: RawEd
   } else if (ctx.lang === "php" && node.type === "use_declaration") {
     // Trait composition inside a class body (`use HasFactory, Notifiable;`).
     // Modelled as `implements`: like an interface, a trait is a contract of
-    // behaviour the class mixes in (Graft's Relation set has no `uses`).
+    // behaviour the class mixes in (Symgraph's Relation set has no `uses`).
     for (const t of node.namedChildren) {
       if (t.type === "name" || t.type === "qualified_name") {
         edges.push({ source: ctx.parentId, relation: "implements", name: t.text.replace(/^.*\\/, ""), file: ctx.rel });
@@ -1305,7 +1305,7 @@ function describeGo(node: Parser.SyntaxNode, _ctx: WalkCtx): DefDescriptor | nul
  *
  * Phase 1 (flat extraction — every named function is a plain `function` node)
  * plus Phase 2 (S3/S4/R6 class awareness, R's class systems being library
- * *convention* rather than grammar syntax, unlike every other language graft
+ * *convention* rather than grammar syntax, unlike every other language symgraph
  * supports):
  *   - left-assign (`<-`/`<<-`/`=`) / right-assign (`->`/`->>`) function
  *     assignment — Phase 1's shape, see the two `binary_operator`/
@@ -2118,7 +2118,7 @@ function phpExported(node: Parser.SyntaxNode): boolean {
  * objects: the binding does not guarantee that two traversals to the same
  * underlying node hand back the same JS wrapper, so `right === node` can be false
  * even when they are the same node — producing a stray `{closure}` name that
- * makes `graft check` report the graph STALE against its own stored output. */
+ * makes `symgraph check` report the graph STALE against its own stored output. */
 function phpClosureName(node: Parser.SyntaxNode): string {
   const parent = node.parent;
   if (parent?.type === "assignment_expression" && parent.childForFieldName("right")?.id === node.id) {

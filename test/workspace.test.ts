@@ -36,7 +36,7 @@ function workspaceFx(children: Record<string, Record<string, string>>): string {
   return parent;
 }
 
-/** Build every git child into its own graft/, then write the workspace index. */
+/** Build every git child into its own symgraph/, then write the workspace index. */
 async function buildWorkspace(parent: string): Promise<{ children: string[]; migrated: boolean }> {
   return splitWorkspace(parent, undefined, async (childDir) => {
     await buildGraph(childDir);
@@ -72,13 +72,13 @@ test("isWorkspaceBuildRoot: own .git (submodules) → NOT a workspace", () => {
 test("child built via parent is byte-identical to building it standalone", async () => {
   const p = workspaceFx(REPOS);
   await buildWorkspace(p);
-  const childGraft = contextDirFor(join(p, "repoA"));
-  const viaParent = readFileSync(wiringPath(childGraft), "utf8");
+  const childSymgraph = contextDirFor(join(p, "repoA"));
+  const viaParent = readFileSync(wiringPath(childSymgraph), "utf8");
 
   // Rebuild the same child standalone — deterministic writer, same source.
-  rmSync(childGraft, { recursive: true, force: true });
+  rmSync(childSymgraph, { recursive: true, force: true });
   await buildGraph(join(p, "repoA"));
-  const standalone = readFileSync(wiringPath(childGraft), "utf8");
+  const standalone = readFileSync(wiringPath(childSymgraph), "utf8");
 
   assert.equal(viaParent, standalone);
   rmSync(p, { recursive: true, force: true });
@@ -89,7 +89,7 @@ test("workspace.json lists both children; parent holds no mega-graph", async () 
   await buildWorkspace(p);
   const ws = readWorkspace(p);
   assert.deepEqual(ws, { version: 1, children: ["repoA", "repoB"] });
-  // Parent graft holds ONLY workspace.json — no .graph/wiring.json.
+  // Parent symgraph holds ONLY workspace.json — no .graph/wiring.json.
   assert.equal(existsSync(wiringPath(contextDirFor(p))), false);
   assert.equal(existsSync(join(contextDirFor(p), "workspace.json")), true);
   rmSync(p, { recursive: true, force: true });
@@ -325,7 +325,7 @@ test("migration: mega-graph parent split → .graph removed, workspace.json writ
 
   assert.equal(
     migrationNote(["repoA", "repoB"]),
-    "⚠ this folder contains 2 separate git repos — splitting: each repo now gets its own committable graft/ (repoA/graft/, repoB/graft/); the combined graph here is replaced by a workspace index. Queries from here now search all repos, fairly.",
+    "⚠ this folder contains 2 separate git repos — splitting: each repo now gets its own committable symgraph/ (repoA/symgraph/, repoB/symgraph/); the combined graph here is replaced by a workspace index. Queries from here now search all repos, fairly.",
   );
   rmSync(p, { recursive: true, force: true });
 });
@@ -381,7 +381,7 @@ test("one unbuilt child is surfaced, not silently skipped", async () => {
   assert.deepEqual(wg.missing, ["repoC"]);
   assert.equal(
     coverageNote(wg),
-    "2 of 3 workspace repos have graphs; run graft build to cover repoC",
+    "2 of 3 workspace repos have graphs; run symgraph build to cover repoC",
   );
   rmSync(p, { recursive: true, force: true });
 });

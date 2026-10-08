@@ -47,10 +47,10 @@ export interface EnrichOptions {
 }
 
 /** How often the crux pass flushes partial progress to disk. Read at call time (not
- * module load) so a test seam `GRAFT_CRUX_CHECKPOINT_MS=0` (flush on every completed
+ * module load) so a test seam `SYMGRAPH_CRUX_CHECKPOINT_MS=0` (flush on every completed
  * file) takes effect. */
 function checkpointMs(): number {
-  return Number(process.env.GRAFT_CRUX_CHECKPOINT_MS ?? 15000);
+  return Number(process.env.SYMGRAPH_CRUX_CHECKPOINT_MS ?? 15000);
 }
 
 export interface EnrichStats {
@@ -67,7 +67,7 @@ export interface EnrichStats {
   skippedFiles: number;
   /** Set when the pass gave up early: quota/auth rejection, or a run of
    * provider failures. Content-quality misses (#235) count in `failedFiles` but
-   * do not set this. The reason is what `graft build --deep` exits non-zero with. */
+   * do not set this. The reason is what `symgraph build --deep` exits non-zero with. */
   fatal?: string;
 }
 
@@ -270,7 +270,7 @@ async function collectFileCrux(
     }
   }
   // A total miss used to return `{ results: ∅ }` with no error — enrich left
-  // every node `pending`, the CLI exited 0, and `graft check` told the user to
+  // every node `pending`, the CLI exited 0, and `symgraph check` told the user to
   // re-run `--deep` forever (#172). Surface it as a failure like a thrown error.
   // Content-quality, not quota: count the file, keep going (#235).
   if (!error && refs.length > 0 && results.size === 0) {

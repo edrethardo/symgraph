@@ -213,7 +213,7 @@ class Animal {
  * in Swift are ordinary call nodes with no `new` to mark them (Python's case,
  * with struct/enum initializers as routine as class ones). */
 async function buildSwift(files: Record<string, string>): Promise<GraphV1> {
-  const d = mkdtempSync(join(tmpdir(), "graft-swift-"));
+  const d = mkdtempSync(join(tmpdir(), "symgraph-swift-"));
   mkdirSync(join(d, "Sources"), { recursive: true });
   for (const [name, src] of Object.entries(files)) writeFileSync(join(d, "Sources", name), src);
   const r = await buildGraph(d);

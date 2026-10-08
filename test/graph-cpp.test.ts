@@ -75,7 +75,7 @@ int* make_buffer(void) { return 0; }
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-cpp-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-cpp-"));
   writeFileSync(join(dir, "engine.h"), ENGINE_H);
   writeFileSync(join(dir, "physics.cpp"), PHYSICS_CPP);
   writeFileSync(join(dir, "util.c"), UTIL_C);
@@ -91,7 +91,7 @@ test("C/C++ extraction: functions, methods, classes, structs, enums", async () =
   const result = await buildGraph(dir); // $0, Tier-1 only
   assert.ok(result.languages.includes("c/c++"), `languages should include c/c++, got [${result.languages}]`);
 
-  const graph = readGraph(wiringPath(join(dir, "graft")));
+  const graph = readGraph(wiringPath(join(dir, "symgraph")));
   assert.ok(graph, "wiring graph should be written");
 
   // header: struct / enum / class, found through the namespace wrapper

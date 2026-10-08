@@ -5,26 +5,26 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { upsertSection, fencedBlock } from '../src/hosts/sections.js';
 
-function fresh(): string { return mkdtempSync(join(tmpdir(), 'graft-sections-')); }
+function fresh(): string { return mkdtempSync(join(tmpdir(), 'symgraph-sections-')); }
 
 test('creates the file with a fenced block when missing', () => {
   const f = join(fresh(), 'AGENTS.md');
-  const r = upsertSection(f, '## Graft\nuse graft ask');
+  const r = upsertSection(f, '## Symgraph\nuse symgraph ask');
   assert.equal(r.action, 'created');
   const text = readFileSync(f, 'utf8');
-  assert.ok(text.includes('<!-- graft:start -->'));
-  assert.ok(text.includes('use graft ask'));
+  assert.ok(text.includes('<!-- symgraph:start -->'));
+  assert.ok(text.includes('use symgraph ask'));
   assert.ok(text.endsWith('\n'));
 });
 
 test('appends after existing content, separated by a blank line', () => {
   const f = join(fresh(), 'AGENTS.md');
   writeFileSync(f, '# My rules\n\nBe nice.\n');
-  const r = upsertSection(f, 'graft body');
+  const r = upsertSection(f, 'symgraph body');
   assert.equal(r.action, 'appended');
   const text = readFileSync(f, 'utf8');
   assert.ok(text.startsWith('# My rules\n\nBe nice.\n'));
-  assert.match(text, /Be nice\.\n\n<!-- graft:start -->/);
+  assert.match(text, /Be nice\.\n\n<!-- symgraph:start -->/);
 });
 
 test('replaces only the fenced region on re-run with new body', () => {
@@ -37,7 +37,7 @@ test('replaces only the fenced region on re-run with new body', () => {
   assert.ok(text.includes('below'));
   assert.ok(text.includes('new body'));
   assert.ok(!text.includes('old body'));
-  assert.equal(text.match(/graft:start/g)!.length, 1, 'exactly one block');
+  assert.equal(text.match(/symgraph:start/g)!.length, 1, 'exactly one block');
 });
 
 test('reports unchanged when the fenced body already matches', () => {
@@ -49,10 +49,10 @@ test('reports unchanged when the fenced body already matches', () => {
 
 test('ignores inline marker mentions (marker must be alone on its line)', () => {
   const f = join(fresh(), 'AGENTS.md');
-  writeFileSync(f, 'talking about `<!-- graft:start -->` in prose\n');
+  writeFileSync(f, 'talking about `<!-- symgraph:start -->` in prose\n');
   const r = upsertSection(f, 'body');
   assert.equal(r.action, 'appended');
-  assert.equal(readFileSync(f, 'utf8').match(/^<!-- graft:start -->$/gm)!.length, 1);
+  assert.equal(readFileSync(f, 'utf8').match(/^<!-- symgraph:start -->$/gm)!.length, 1);
 });
 
 test('CRLF file: no-op run reports unchanged and preserves bytes exactly', () => {
@@ -69,11 +69,11 @@ test('CRLF file: no-op run reports unchanged and preserves bytes exactly', () =>
 test('CRLF file: appending produces a block using CRLF line endings throughout', () => {
   const f = join(fresh(), 'AGENTS.md');
   writeFileSync(f, '# My rules\r\n\r\nBe nice.\r\n');
-  const r = upsertSection(f, 'graft body');
+  const r = upsertSection(f, 'symgraph body');
   assert.equal(r.action, 'appended');
   const text = readFileSync(f, 'utf8');
   assert.ok(text.startsWith('# My rules\r\n\r\nBe nice.\r\n'));
-  assert.ok(text.includes('graft body'));
+  assert.ok(text.includes('symgraph body'));
   // No bare '\n' without a preceding '\r' anywhere in the result.
   assert.equal(/(?<!\r)\n/.test(text), false, 'result must not mix LF into a CRLF file');
 });

@@ -15,17 +15,17 @@ import {
 
 test('formatVersionReport: up to date', () => {
   const out = formatVersionReport('0.4.4', { ok: true, version: '0.4.4' });
-  assert.equal(out, 'graft 0.4.4\nlatest on npm: 0.4.4 ✓ up to date');
+  assert.equal(out, 'symgraph 0.4.4\nlatest on npm: 0.4.4 ✓ up to date');
 });
 
 test('formatVersionReport: newer version available', () => {
   const out = formatVersionReport('0.4.4', { ok: true, version: '0.4.5' });
-  assert.equal(out, 'graft 0.4.4\nlatest on npm: 0.4.5 — run graft upgrade');
+  assert.equal(out, 'symgraph 0.4.4\nlatest on npm: 0.4.5 — run symgraph upgrade');
 });
 
 test('formatVersionReport: offline / unreachable', () => {
   const out = formatVersionReport('0.4.4', { ok: false });
-  assert.equal(out, 'graft 0.4.4\nlatest: unreachable (offline?)');
+  assert.equal(out, 'symgraph 0.4.4\nlatest: unreachable (offline?)');
 });
 
 // --- formatUpgradeReport: pure formatting, injected upgrade results (no network, no spawn) ---
@@ -33,12 +33,12 @@ test('formatVersionReport: offline / unreachable', () => {
 test('formatUpgradeReport: npx no-op suggests a permanent install', () => {
   const out = formatUpgradeReport({ ran: false, ok: true, oldVersion: '0.4.4' });
   assert.match(out, /npx/);
-  assert.match(out, /npm install -g @nanonets\/graft/);
+  assert.match(out, /npm install -g symgraph/);
 });
 
 test('formatUpgradeReport: successful upgrade shows old -> new', () => {
   const out = formatUpgradeReport({ ran: true, ok: true, oldVersion: '0.4.4', newVersion: '0.4.5' });
-  assert.equal(out, 'graft 0.4.4 → 0.4.5');
+  assert.equal(out, 'symgraph 0.4.4 → 0.4.5');
 });
 
 test('formatUpgradeReport: failed install surfaces the error', () => {
@@ -71,19 +71,19 @@ test('readCurrentVersion reads the real package.json version', () => {
 //
 // Built with `join` rather than a `/`-separated literal so the path carries the
 // platform separator: `fileURLToPath` hands back `…\_npx\…` on Windows, where the
-// original `includes("/_npx/")` was always false and `graft upgrade` would have run
+// original `includes("/_npx/")` was always false and `symgraph upgrade` would have run
 // `npm install -g` on top of an npx invocation. On posix this is the identity case.
 
 test('isRunningViaNpx detects an npx cache path', () => {
   const npxPath = pathToFileURL(
-    join(sep, 'Users', 'x', '.npm', '_npx', 'abc123', 'node_modules', '@nanonets', 'graft', 'dist', 'cli.js'),
+    join(sep, 'Users', 'x', '.npm', '_npx', 'abc123', 'node_modules', 'symgraph', 'dist', 'cli.js'),
   ).href;
   assert.equal(isRunningViaNpx(npxPath), true);
 });
 
 test('isRunningViaNpx is false for a regular global install', () => {
   const globalPath = pathToFileURL(
-    join(sep, 'usr', 'local', 'lib', 'node_modules', '@nanonets', 'graft', 'dist', 'cli.js'),
+    join(sep, 'usr', 'local', 'lib', 'node_modules', 'symgraph', 'dist', 'cli.js'),
   ).href;
   assert.equal(isRunningViaNpx(globalPath), false);
 });

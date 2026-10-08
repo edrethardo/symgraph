@@ -1,6 +1,6 @@
 /**
  * The generic (breadth) tier: one language-agnostic extractor over a WASM grammar
- * + its tags.scm. These tests prove (a) it emits well-formed graft nodes/edges
+ * + its tags.scm. These tests prove (a) it emits well-formed symgraph nodes/edges
  * for a language with NO hand-written extractor, and (b) the EXISTING resolver
  * resolves its bare-name call edges with zero language-specific code.
  */
@@ -94,9 +94,9 @@ const SNIPPETS: Array<{ lang: string; file: string; src: string; defs: string[];
     defs: ["class:A", "method:helper", "method:run"], call: ["run", "helper"],
   },
   {
-    // Explicit call (`self.draw`), not a parenless bareword: graft's ruby query
+    // Explicit call (`self.draw`), not a parenless bareword: symgraph's ruby query
     // captures only real call nodes — the upstream bareword @reference.call
-    // needs locals-tracking graft doesn't run, so it's dropped for precision.
+    // needs locals-tracking symgraph doesn't run, so it's dropped for precision.
     lang: "ruby", file: "a.rb",
     src: `class Widget\n  def render\n    self.draw\n  end\n  def draw\n    1\n  end\nend\n`,
     defs: ["class:Widget", "method:draw", "method:render"], call: ["render", "draw"],
@@ -261,7 +261,7 @@ test("breadth tier: Rust use crate::… resolves to the in-repo module (longest-
 });
 
 test("buildGraph + checkGraph handle a breadth-tier (.rs) repo end-to-end", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-rust-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-rust-"));
   mkdirSync(join(dir, "src"), { recursive: true });
   writeFileSync(join(dir, "src", "lib.rs"), RUST);
 
@@ -330,7 +330,7 @@ test("Dart top-level functions/consts become symbols; call edges resolve; body l
 });
 
 test("Dart file-level skeleton lists the API, not function-body locals (#134)", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-dart-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-dart-"));
   mkdirSync(join(dir, "lib"));
   writeFileSync(join(dir, "lib", "example.dart"), DART);
 
@@ -447,7 +447,7 @@ test("extractGeneric rethrows a throwing grammar with the language named (#139)"
 });
 
 test("a throwing grammar is a per-file build error, cached as a failure (#139)", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-throwing-grammar-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-throwing-grammar-"));
   writeFileSync(join(dir, "lib.rs"), "pub fn f() {}\n");
   await warmGenericGrammars(["rust"]); // so buildGraph's own warm call is a no-op
   const prev = swapGrammarForTest("rust", THROWING_GRAMMAR);

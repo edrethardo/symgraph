@@ -1,9 +1,9 @@
 /**
- * Register the graft MCP server in each host's config.
+ * Register the symgraph MCP server in each host's config.
  * JSON hosts get a keyed merge (other servers preserved; unparseable files
  * are never rewritten). The TOML host gets an append-if-absent section.
  *
- * `mcpTargets()` is the pure "which files would this touch" half, so `graft
+ * `mcpTargets()` is the pure "which files would this touch" half, so `symgraph
  * init --dry-run` and the picker can report paths without writing;
  * `registerMcpConfigs()` walks that same list to do the writing.
  */
@@ -24,7 +24,7 @@ export interface McpTarget extends PlannedWrite {
   format: 'json' | 'toml';
   /** JSON only: the top-level key holding the server map. */
   topKey?: string;
-  /** JSON only: the server entry to merge in under `graft`. */
+  /** JSON only: the server entry to merge in under `symgraph`. */
   entry?: object;
 }
 
@@ -34,7 +34,7 @@ export interface McpTarget extends PlannedWrite {
  * `npx -y` resolves the package before it can serve: measured at a 211 ms
  * spawn→`initialize` handshake against 80 ms for the installed binary, five runs
  * each. The harness registers a server's tools only once that handshake lands, and
- * a slow one can miss the first request entirely — in a traced session graft's
+ * a slow one can miss the first request entirely — in a traced session symgraph's
  * tools arrived 13.9 s in, four model turns too late to shape the approach. (That
  * 13.9 s is NOT explained by 130 ms; the gap's cause is still unknown. This is the
  * cheap half of the fix, not the whole of it.)
@@ -42,29 +42,29 @@ export interface McpTarget extends PlannedWrite {
  * Deliberately a bare command name, never an absolute path: these files get
  * committed and shared, and this repo already carries the scar of the alternative —
  * a checked-in hook shim with another machine's home directory baked into it. A
- * bare `graft` works on any machine that has it installed; `npx` remains the
+ * bare `symgraph` works on any machine that has it installed; `npx` remains the
  * fallback for machines that don't.
  */
-const NPX_LAUNCH = { command: 'npx', args: ['-y', '@nanonets/graft', 'mcp'] };
-const BIN_LAUNCH = { command: 'graft', args: ['mcp'] };
+const NPX_LAUNCH = { command: 'npx', args: ['-y', 'symgraph', 'mcp'] };
+const BIN_LAUNCH = { command: 'symgraph', args: ['mcp'] };
 
-function graftOnPath(): boolean {
-  const r = spawnSync('graft', ['--version'], { stdio: 'ignore', timeout: 5000 });
+function symgraphOnPath(): boolean {
+  const r = spawnSync('symgraph', ['--version'], { stdio: 'ignore', timeout: 5000 });
   return r.status === 0;
 }
 
 /**
  * JSON hosts: `{ command, args }`.
  *
- * `GRAFT_MCP_NPX=1` forces the `npx` form — the escape hatch for a machine whose
+ * `SYMGRAPH_MCP_NPX=1` forces the `npx` form — the escape hatch for a machine whose
  * global install is stale or shadowed, and what the tests set so their expectations
- * don't depend on whether the machine running them happens to have graft installed.
+ * don't depend on whether the machine running them happens to have symgraph installed.
  * `opts.onPath` is the same override for direct unit tests of both branches.
  */
 export function serverEntry(opts: { onPath?: boolean } = {}): { command: string; args: string[] } {
-  const forced = process.env.GRAFT_MCP_NPX;
+  const forced = process.env.SYMGRAPH_MCP_NPX;
   if (forced !== undefined && forced !== '' && forced !== '0' && forced !== 'false') return NPX_LAUNCH;
-  return (opts.onPath ?? graftOnPath()) ? BIN_LAUNCH : NPX_LAUNCH;
+  return (opts.onPath ?? symgraphOnPath()) ? BIN_LAUNCH : NPX_LAUNCH;
 }
 
 
@@ -91,28 +91,28 @@ export function mergeJsonKey(id: string, path: string, topKey: string, entry: ob
   if (typeof bucket !== 'object' || bucket === null || Array.isArray(bucket)) {
     return { id, path, action: 'skipped-unparseable' };
   }
-  if (JSON.stringify(bucket.graft) === JSON.stringify(entry)) return { id, path, action: 'unchanged' };
+  if (JSON.stringify(bucket.symgraph) === JSON.stringify(entry)) return { id, path, action: 'unchanged' };
   const action = existed ? 'updated' : 'created';
-  bucket.graft = entry;
+  bucket.symgraph = entry;
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(root, null, 2)}\n`);
   return { id, path, action };
 }
 
-/** The `[mcp_servers.graft]` table header, as written and as matched. */
-const TOML_HEADER = '[mcp_servers.graft]';
+/** The `[mcp_servers.symgraph]` table header, as written and as matched. */
+const TOML_HEADER = '[mcp_servers.symgraph]';
 
 /**
- * Remove the `[mcp_servers.graft]` table from a TOML config, returning the rest.
+ * Remove the `[mcp_servers.symgraph]` table from a TOML config, returning the rest.
  *
  * Line-based on purpose: a real parse-and-reserialize would reformat the user's
  * whole file. The table runs from its header to the next `[`-header or EOF, which
  * is exactly the shape {@link upsertCodexToml} appends. Exported so the writer and
- * `retract.ts` can never disagree about what "graft's section" means.
+ * `retract.ts` can never disagree about what "symgraph's section" means.
  */
-export function stripTomlSection(text: string): { rest: string; found: boolean } {
+export function stripTomlSection(text: string, header: string = TOML_HEADER): { rest: string; found: boolean } {
   const lines = text.split('\n');
-  const start = lines.findIndex((l) => l.trim() === TOML_HEADER);
+  const start = lines.findIndex((l) => l.trim() === header);
   if (start === -1) return { rest: text, found: false };
   let end = start + 1;
   while (end < lines.length && !lines[end].trimStart().startsWith('[')) end++;
@@ -124,10 +124,10 @@ export function stripTomlSection(text: string): { rest: string; found: boolean }
 }
 
 /**
- * Register graft in a TOML config, replacing any section a previous version left.
+ * Register symgraph in a TOML config, replacing any section a previous version left.
  *
  * The old behaviour was to skip entirely once the header existed, which froze the
- * launch command at whatever the first init wrote: a repo wired when graft wasn't
+ * launch command at whatever the first init wrote: a repo wired when symgraph wasn't
  * on PATH kept the slow `npx` form forever, and no upgrade could correct it. Strip
  * and re-append instead, so this converges like every other writer — foreign
  * tables are untouched either way.
@@ -163,7 +163,7 @@ function jsonTarget(
   entry: object,
   scope: PlannedWrite['scope'] = 'repo',
 ): McpTarget {
-  return { hostId, id, path, scope, kind: 'mcp', what: `${topKey}.graft`, format: 'json', topKey, entry };
+  return { hostId, id, path, scope, kind: 'mcp', what: `${topKey}.symgraph`, format: 'json', topKey, entry };
 }
 
 /**
@@ -204,7 +204,7 @@ export function mcpTargets(
         // the same TOML shape Codex uses at ~/.codex/config.toml.
         out.push({
           hostId: id, id: 'grok', path: join(repo, '.grok', 'config.toml'),
-          scope: 'repo', kind: 'mcp', what: '[mcp_servers.graft]', format: 'toml',
+          scope: 'repo', kind: 'mcp', what: '[mcp_servers.symgraph]', format: 'toml',
         });
         break;
       case 'agents':
@@ -213,7 +213,7 @@ export function mcpTargets(
         if (dirExists(join(home, '.codex'))) {
           out.push({
             hostId: id, id: 'codex', path: join(home, '.codex', 'config.toml'),
-            scope: 'global', kind: 'mcp', what: '[mcp_servers.graft]', format: 'toml',
+            scope: 'global', kind: 'mcp', what: '[mcp_servers.symgraph]', format: 'toml',
           });
         }
         if (dirExists(join(home, '.config', 'opencode'))) {

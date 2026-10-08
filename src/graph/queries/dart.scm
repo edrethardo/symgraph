@@ -2,7 +2,7 @@
 ;
 ; The Dart grammar does not wrap a function's signature and body in one
 ; definition node: `function_signature` / `method_signature` sit as siblings
-; of `function_body` under `program` / `class_body`. Graft's generic extractor
+; of `function_body` under `program` / `class_body`. Symgraph's generic extractor
 ; expands a captured signature to include a following `function_body` sibling
 ; so calls inside the body are attributed to the function (see defScope).
 ;

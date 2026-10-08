@@ -64,7 +64,7 @@ void frame(float dt) {
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-cpp-edges-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-cpp-edges-"));
   writeFileSync(join(dir, "physics.h"), PHYSICS_H);
   writeFileSync(join(dir, "physics.cpp"), PHYSICS_CPP);
   writeFileSync(join(dir, "world.cpp"), WORLD_CPP);
@@ -80,7 +80,7 @@ function edge(graph: GraphV1, source: string, target: string): EdgeV1 | undefine
 test("C/C++ call edges: unique-name and receiver-typed resolution, ambiguity dropped", async () => {
   const dir = makeFixture();
   await buildGraph(dir);
-  const graph = readGraph(wiringPath(join(dir, "graft")));
+  const graph = readGraph(wiringPath(join(dir, "symgraph")));
   assert.ok(graph, "wiring graph should be written");
 
   const integrate = "physics.cpp#Body.integrate";

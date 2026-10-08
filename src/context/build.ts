@@ -70,7 +70,7 @@ export interface BuildOptions {
   model: string;
   summarizer: Summarizer;
   synthesizer: Synthesizer;
-  /** Files summarized in parallel during phase 1. Default 8. Raised via `graft build -j`. */
+  /** Files summarized in parallel during phase 1. Default 8. Raised via `symgraph build -j`. */
   concurrency?: number;
   onProgress?: (info: BuildProgress) => void;
 }
@@ -444,7 +444,7 @@ function saveCache(outDir: string, cache: BuildCache): void {
 
 /** Min interval between phase-1 cache flushes. Env seam for tests. */
 function summaryCheckpointMs(): number {
-  const raw = Number(process.env.GRAFT_SUMMARY_CHECKPOINT_MS);
+  const raw = Number(process.env.SYMGRAPH_SUMMARY_CHECKPOINT_MS);
   return Number.isFinite(raw) && raw >= 0 ? raw : 15_000;
 }
 

@@ -1,5 +1,5 @@
 /**
- * CLI wiring for `graft callers` and its `--direction` / `--depth` flags.
+ * CLI wiring for `symgraph callers` and its `--direction` / `--depth` flags.
  *
  * One command, one implementation: resolve a symbol via `resolveSymbol`, walk
  * edges via `edgeWalk` (incoming or outgoing, depth 1 or a BFS), and share the
@@ -7,14 +7,14 @@
  * cli.ts so that file stays thin (argument wiring only) and this logic stays
  * unit-testable without shelling out to the CLI on every case.
  *
- * `--direction out` subsumes the old `graft callees`; `--depth N` subsumes the
- * old `graft impact`. Exported formatters are reused by the MCP `graft_trace_calls`
+ * `--direction out` subsumes the old `symgraph callees`; `--depth N` subsumes the
+ * old `symgraph impact`. Exported formatters are reused by the MCP `symgraph_trace_calls`
  * tool (`src/mcp/tools.ts`), so both surfaces render identical reports.
  */
 import { resolve } from "node:path";
 import { fileReader, referenceLine, wordRe } from "../blast/evidence.js";
 import { contextDirFor } from "../context/node-file.js";
-import { withGraftLine, coverageFor, type Coverage } from "../context/savings.js";
+import { withSymgraphLine, coverageFor, type Coverage } from "../context/savings.js";
 import { unindexedNote, type UnindexedStat } from "./coverage.js";
 import { edgeCoverageOf, languageOf } from "./extract.js";
 import { loadGraphCached } from "./load.js";
@@ -35,7 +35,7 @@ export interface CallersCliOptions {
 const ARROW: Record<Direction, "←" | "→"> = { in: "←", out: "→" };
 const DEFAULT_DEPTH = 1;
 
-/** Exported so the MCP `graft_trace_calls` tool (`src/mcp/tools.ts`) can render the
+/** Exported so the MCP `symgraph_trace_calls` tool (`src/mcp/tools.ts`) can render the
  * same human report format as the CLI, rather than re-implementing it — both
  * surfaces walk the same edges via the same `resolveSymbol` / `edgeWalk` core. */
 export function headerOf(n: NodeV1): string {
@@ -43,7 +43,7 @@ export function headerOf(n: NodeV1): string {
 }
 
 /** `showDepth` is set for multi-hop walks (depth > 1), matching the old
- * `graft impact` output which tagged every hit with its BFS depth.
+ * `symgraph impact` output which tagged every hit with its BFS depth.
  *
  * `quote`, when given, is the call site itself — the line inside the hit where it
  * references the symbol. An edge that says "total calls add" is a claim; the line
@@ -114,14 +114,14 @@ export function looseNoteFor(
   // result may be real undercount, and must not read like "nothing calls
   // this" (issues #66/#68).
   if (opts.edgeless) {
-    return `  no ${label} in the graph — but this file's language has inferred-only call edges (conservative name matching) that may undercount. Verify with graft grep "${name}" or raw grep -rn before concluding nothing ${direction === "out" ? "is called" : "calls this"}`;
+    return `  no ${label} in the graph — but this file's language has inferred-only call edges (conservative name matching) that may undercount. Verify with symgraph grep "${name}" or raw grep -rn before concluding nothing ${direction === "out" ? "is called" : "calls this"}`;
   }
   const dir = direction === "out" ? "outgoing" : "incoming";
   const ambiguity =
     candidateCount > 1
       ? ` ${candidateCount} definitions share the name "${name}"; a cross-file caller of an ambiguous name is dropped rather than guessed, so this may undercount.`
       : "";
-  return `  no indexed ${label} — the graph has no ${dir} call/reference edges for this symbol as written.${ambiguity} Check the name (try the bare symbol, or "Type.method"), or find its uses with graft grep "${name}". Fall back to raw grep -rn only for unindexed files`;
+  return `  no indexed ${label} — the graph has no ${dir} call/reference edges for this symbol as written.${ambiguity} Check the name (try the bare symbol, or "Type.method"), or find its uses with symgraph grep "${name}". Fall back to raw grep -rn only for unindexed files`;
 }
 
 /** True when a symbol's language has inferred-only edge coverage (C/C++) —
@@ -132,13 +132,13 @@ export function symbolEdgeless(node: NodeV1): boolean {
   return lang !== null && edgeCoverageOf(lang) !== "full";
 }
 
-/** The unknown-symbol error for `graft callers` and `graft_trace_calls` — one
+/** The unknown-symbol error for `symgraph callers` and `symgraph_trace_calls` — one
  * implementation so CLI and MCP say the same thing. With `unindexed` (the
  * graph's `meta.unindexed`), it names the coverage gap: on an unsupported
  * language, "check spelling" sends you chasing a typo that isn't there while
  * the symbol sits in a file no parser ever read (issue #66). */
 export function unknownSymbolNote(query: string, unindexed?: UnindexedStat[]): string {
-  const base = `no symbol "${query}" in the graph — check spelling or run \`graft build\``;
+  const base = `no symbol "${query}" in the graph — check spelling or run \`symgraph build\``;
   const gap = unindexedNote(unindexed);
   return gap ? `${base}. Note: ${gap}` : base;
 }
@@ -201,7 +201,7 @@ export function runCallersCommand(query: string, dir: string, opts: CallersCliOp
   const contextDir = contextDirFor(root, opts.globalDir);
   const graph = loadGraphCached(contextDir);
   if (!graph) {
-    console.error(`✗ no graph found at ${contextDir} — run \`graft build\` first`);
+    console.error(`✗ no graph found at ${contextDir} — run \`symgraph build\` first`);
     process.exit(1);
   }
 
@@ -271,5 +271,5 @@ export function runCallersCommand(query: string, dir: string, opts: CallersCliOp
     lines.push("");
   }
   const body = lines.join("\n").replace(/\n+$/, "\n");
-  process.stdout.write(withGraftLine(body, saved));
+  process.stdout.write(withSymgraphLine(body, saved));
 }

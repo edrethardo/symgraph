@@ -1,14 +1,14 @@
 {
   "statusLine": {
     "type": "command",
-    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-statusline.cjs\""
+    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/symgraph-statusline.cjs\""
   },
   "subagentStatusLine": {
     "type": "command",
-    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-statusline.cjs\""
+    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/symgraph-statusline.cjs\""
   },
   "footerLinksRegexes": [
-    "graft/[\\w./-]+\\.md"
+    "symgraph/[\\w./-]+\\.md"
   ],
   "hooks": {
     "PostToolUse": [
@@ -17,17 +17,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" post-edit",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/symgraph-hooks.cjs\" post-edit",
             "timeout": 10000
           }
         ]
       },
       {
-        "matcher": "Bash|mcp__graft__",
+        "matcher": "Bash|mcp__symgraph__",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" tool-savings",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/symgraph-hooks.cjs\" tool-savings",
             "timeout": 8000
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" stop",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/symgraph-hooks.cjs\" stop",
             "timeout": 8000
           }
         ]
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" prompt",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/symgraph-hooks.cjs\" prompt",
             "timeout": 15000
           }
         ]
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" session-start",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/symgraph-hooks.cjs\" session-start",
             "timeout": 8000
           }
         ]
@@ -69,9 +69,9 @@
   },
   "permissions": {
     "allow": [
-      "Bash(graft:*)",
-      "Bash(npx graft:*)",
-      "Bash(graft-dev:*)",
+      "Bash(symgraph:*)",
+      "Bash(npx symgraph:*)",
+      "Bash(symgraph-dev:*)",
       "Bash(node dist/cli.js:*)"
     ]
   }

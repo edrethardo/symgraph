@@ -3,7 +3,7 @@
  * node and the symbol backstop (see {@link LabelSource}).
  *
  * The point is scope. Getting labels from `build --deep` means summarising every
- * file in the repo — 356 calls and thirteen minutes on graft's own repo — to put
+ * file in the repo — 356 calls and thirteen minutes on symgraph's own repo — to put
  * names on the six clusters a PR actually touches, and it still misses: only 40% of
  * this repo's files are claimed by a concept, so the rest fall back to a path. Here
  * the unit of work is the cluster, not the file: one request names all of them from

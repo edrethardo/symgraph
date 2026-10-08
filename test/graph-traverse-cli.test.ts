@@ -1,7 +1,7 @@
 /**
- * CLI tests for `graft callers` and its `--direction`/`--depth` flags — the one
+ * CLI tests for `symgraph callers` and its `--direction`/`--depth` flags — the one
  * command that wires src/graph/traverse.ts's pure resolver + edge-walkers into
- * the `graft` binary (`--direction out` is the old `callees`; `--depth N` is the
+ * the `symgraph` binary (`--direction out` is the old `callees`; `--depth N` is the
  * old `impact`). Runs the real CLI via execFileSync (same pattern as
  * test/mcp-tools.test.ts's `builtRepo` helper) against a built fixture repo,
  * so these tests exercise the actual process boundary: exit codes, stdout vs
@@ -15,7 +15,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 function builtRepo(): string {
-  const d = mkdtempSync(join(tmpdir(), 'graft-traversecli-'));
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-traversecli-'));
   mkdirSync(join(d, 'src'), { recursive: true });
   writeFileSync(
     join(d, 'src', 'math.ts'),
@@ -40,7 +40,7 @@ function runCli(args: string[]): { stdout: string; stderr: string; status: numbe
   }
 }
 
-test('graft callers: happy path shows header and the caller hit', () => {
+test('symgraph callers: happy path shows header and the caller hit', () => {
   const d = builtRepo();
   const r = runCli(['callers', 'add', d]);
   assert.equal(r.status, 0);
@@ -48,7 +48,7 @@ test('graft callers: happy path shows header and the caller hit', () => {
   assert.match(r.stdout, /calls ← sub \(src\/math\.ts:/);
 });
 
-test('graft callers --json: shape matches {query, matches:[{symbol,hits}]}', () => {
+test('symgraph callers --json: shape matches {query, matches:[{symbol,hits}]}', () => {
   const d = builtRepo();
   const r = runCli(['callers', 'add', d, '--json']);
   assert.equal(r.status, 0);
@@ -67,16 +67,16 @@ test('graft callers --json: shape matches {query, matches:[{symbol,hits}]}', () 
   assert.equal(m.hits[0].depth, 1);
 });
 
-test('graft callers: unknown symbol exits 1 with a stderr message', () => {
+test('symgraph callers: unknown symbol exits 1 with a stderr message', () => {
   const d = builtRepo();
   const r = runCli(['callers', 'noSuchSymbolAnywhere', d]);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /no symbol "noSuchSymbolAnywhere" in the graph/);
-  assert.match(r.stderr, /graft build/);
+  assert.match(r.stderr, /symgraph build/);
   assert.equal(r.stdout, '');
 });
 
-test('graft callers --direction out: happy path shows the outgoing (callee) hit', () => {
+test('symgraph callers --direction out: happy path shows the outgoing (callee) hit', () => {
   const d = builtRepo();
   // `sub` calls `add`, so its outgoing edge points at add with a `→` arrow.
   const r = runCli(['callers', 'sub', d, '--direction', 'out']);
@@ -85,17 +85,17 @@ test('graft callers --direction out: happy path shows the outgoing (callee) hit'
   assert.match(r.stdout, /calls → add \(src\/math\.ts:/);
 });
 
-test('graft callers --direction out: zero-edge symbol prints a loud callees note and still exits 0', () => {
+test('symgraph callers --direction out: zero-edge symbol prints a loud callees note and still exits 0', () => {
   const d = builtRepo();
   // `add` calls nothing, so its callees are empty — must not be a silent list.
   const r = runCli(['callers', 'add', d, '--direction', 'out']);
   assert.equal(r.status, 0);
   assert.match(r.stdout, /add · function · src\/math\.ts:/);
   assert.match(r.stdout, /no indexed callees/);
-  assert.match(r.stdout, /graft grep "add"/);
+  assert.match(r.stdout, /symgraph grep "add"/);
 });
 
-test('graft callers --direction out --json: zero-edge symbol includes a note field', () => {
+test('symgraph callers --direction out --json: zero-edge symbol includes a note field', () => {
   const d = builtRepo();
   const r = runCli(['callers', 'add', d, '--direction', 'out', '--json']);
   assert.equal(r.status, 0);
@@ -106,11 +106,11 @@ test('graft callers --direction out --json: zero-edge symbol includes a note fie
   assert.equal(m.symbol.name, 'add');
   assert.equal(m.hits.length, 0);
   assert.ok(m.note, 'zero-edge match must have a note field');
-  assert.match(m.note, /graft grep "add"/);
+  assert.match(m.note, /symgraph grep "add"/);
 });
 
 function ambiguousRepo(): string {
-  const d = mkdtempSync(join(tmpdir(), 'graft-traversecli-ambiguous-'));
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-traversecli-ambiguous-'));
   mkdirSync(join(d, 'src'), { recursive: true });
   writeFileSync(join(d, 'src', 'a.ts'), 'export function shared(): number {\n  return 1;\n}\n');
   writeFileSync(join(d, 'src', 'b.ts'), 'export function shared(): number {\n  return 2;\n}\n');
@@ -145,7 +145,7 @@ test('A6 --json: the ambiguous-name note includes the candidate count', () => {
   }
 });
 
-test('graft callers --depth: depth flag walks the BFS transitively (blast radius)', () => {
+test('symgraph callers --depth: depth flag walks the BFS transitively (blast radius)', () => {
   const d = builtRepo();
   // compute -> sub -> add: callers of `add` at depth 1 is just `sub`;
   // depth 2 also reaches `compute` and tags each hit with its depth.
@@ -163,7 +163,7 @@ test('graft callers --depth: depth flag walks the BFS transitively (blast radius
   assert.match(deeper.stdout, /\[depth 2\]/);
 });
 
-test('graft callers --depth all: walks the entire connected closure', () => {
+test('symgraph callers --depth all: walks the entire connected closure', () => {
   const d = builtRepo();
   // compute -> sub -> add. `all` must reach BOTH hops (the full closure),
   // like an unbounded depth, terminating when no new node is found.
@@ -175,28 +175,28 @@ test('graft callers --depth all: walks the entire connected closure', () => {
   assert.match(all.stdout, /\[depth 2\]/);
 });
 
-test('graft callers --depth: rejects a non-numeric, non-"all" value with exit 1', () => {
+test('symgraph callers --depth: rejects a non-numeric, non-"all" value with exit 1', () => {
   const d = builtRepo();
   const r = runCli(['callers', 'add', d, '--depth', 'banana']);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /--depth must be a positive number or "all"/);
 });
 
-test('graft callers --direction: rejects a bad value with exit 1', () => {
+test('symgraph callers --direction: rejects a bad value with exit 1', () => {
   const d = builtRepo();
   const r = runCli(['callers', 'add', d, '--direction', 'sideways']);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /--direction must be "in" or "out"/);
 });
 
-test('graft callers: no graph at all is a stderr error, exit 1', () => {
-  const bare = mkdtempSync(join(tmpdir(), 'graft-traversecli-bare-'));
+test('symgraph callers: no graph at all is a stderr error, exit 1', () => {
+  const bare = mkdtempSync(join(tmpdir(), 'symgraph-traversecli-bare-'));
   const r = runCli(['callers', 'add', bare]);
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /graft build/);
+  assert.match(r.stderr, /symgraph build/);
 });
 
-test('graft callers: quotes the call site, and only where it is the right line', () => {
+test('symgraph callers: quotes the call site, and only where it is the right line', () => {
   const d = builtRepo();
   const r = runCli(['callers', 'add', d]);
   assert.equal(r.status, 0);

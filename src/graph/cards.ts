@@ -1,17 +1,17 @@
 /**
  * Tier-2 "wiring cards" — the passive-channel surface of the wiring graph.
  *
- * The wiring graph itself lives as machine-only JSON in `graft/.graph/wiring.json`
+ * The wiring graph itself lives as machine-only JSON in `symgraph/.graph/wiring.json`
  * (nodes + edges), which an agent never greps or reads. This module projects its
  * NODES up into markdown: one small card per source file, mirroring the source
- * tree under `graft/` (e.g. `graft/src/ai/providers.md`). Each card lists the
+ * tree under `symgraph/` (e.g. `symgraph/src/ai/providers.md`). Each card lists the
  * file's symbols with their `L<start>-L<end>` spans and a one-line description, so
  * a `grep <symbol>` / `find <name>` / `cat` lands on the card and the agent reads
  * ~150 tokens instead of the whole source file. Edges stay in the JSON — you can't
- * grep a traversal — and are reached through `graft ask`.
+ * grep a traversal — and are reached through `symgraph ask`.
  *
  * Cards are a pure projection: no LLM work here. The one-liner is the node's LLM
- * `summary` when present (after `graft build --deep`), else its deterministic
+ * `summary` when present (after `symgraph build --deep`), else its deterministic
  * `signature`, so cards are useful even in a $0 structure-only build.
  */
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync } from "node:fs";
@@ -23,7 +23,7 @@ import { CACHE_DIR, readNodes } from "../context/node-file.js";
 import { GRAPH_DIR } from "./write.js";
 
 const INDEX_FILE = "INDEX.md";
-/** Where a root-level file card goes when `graft/<stem>.md` is already a concept
+/** Where a root-level file card goes when `symgraph/<stem>.md` is already a concept
  * node (same stem as a slug — Laravel `server.php` vs a "Server" concept). */
 const ROOT_CARD_DIR = "_root";
 
@@ -53,7 +53,7 @@ function isConceptNodeFile(path: string): boolean {
 }
 
 /** The card path for a source path: mirror the tree, swap the extension for .md.
- * Root-level sources share `graft/` with concept nodes. If that filename is
+ * Root-level sources share `symgraph/` with concept nodes. If that filename is
  * already a concept, park the file card under `_root/` instead of clobbering it. */
 function cardPathFor(outDir: string, sourcePath: string): string {
   const md = sourcePath.replace(/\.[^./]+$/, "") + ".md";
@@ -204,24 +204,24 @@ export function writeCards(graph: GraphV1, outDir: string): CardStats {
 }
 
 /**
- * Write `graft/INDEX.md` — the roster an agent `cat`s to orient. Lists the concept
+ * Write `symgraph/INDEX.md` — the roster an agent `cat`s to orient. Lists the concept
  * nodes on disk and the per-file cards. Deterministic order; no timestamps.
  */
 export function writeIndex(outDir: string, files: CardFileInfo[]): void {
   const lines: string[] = [
-    "# graft — repo map",
+    "# symgraph — repo map",
     "",
     "Small markdown nodes summarising this repo. `grep` any term, symbol, or",
-    'filename here, or run `graft ask "<task>"`. Each node carries prose plus exact',
+    'filename here, or run `symgraph ask "<task>"`. Each node carries prose plus exact',
     "`file:line`; open a source file only to edit the named span.",
     "",
-    // Whoever reads this file has already decided to look at graft, so this is the
+    // Whoever reads this file has already decided to look at symgraph, so this is the
     // one place a pointer to the richer surface is welcome rather than noise. Stated
     // as what exists, not as an instruction — see `mcp/instructions.ts` for why.
-    "The same graph is queryable as MCP tools (`graft_find_code`, `graft_find_all`,",
-    "`graft_trace_calls`, `graft_file_api`, `graft_repo_map`) where a host exposes them, and",
-    "as the `graft` CLI everywhere else. Edges — who calls what — live only in the",
-    "graph, not in these files: `graft callers <symbol>` is the only way to read them.",
+    "The same graph is queryable as MCP tools (`symgraph_find_code`, `symgraph_find_all`,",
+    "`symgraph_trace_calls`, `symgraph_file_api`, `symgraph_repo_map`) where a host exposes them, and",
+    "as the `symgraph` CLI everywhere else. Edges — who calls what — live only in the",
+    "graph, not in these files: `symgraph callers <symbol>` is the only way to read them.",
     "",
   ];
 
@@ -240,9 +240,9 @@ export function writeIndex(outDir: string, files: CardFileInfo[]): void {
     const withSymbols = files.filter((f) => f.symbols > 0).length;
     lines.push("## Files", "");
     lines.push(
-      `${files.length} per-file wiring cards mirror the source tree under \`graft/\` ` +
+      `${files.length} per-file wiring cards mirror the source tree under \`symgraph/\` ` +
         `(${withSymbols} carry extracted symbols). They are deliberately not enumerated here —`,
-      "`grep` a symbol or `find`/`ls` a filename under `graft/` to land on the card for that file.",
+      "`grep` a symbol or `find`/`ls` a filename under `symgraph/` to land on the card for that file.",
       "",
     );
   }
@@ -254,7 +254,7 @@ export function writeIndex(outDir: string, files: CardFileInfo[]): void {
 export interface CoverRef {
   symbol: string;
   kind: string;
-  /** `src/ai/providers.ts:L28-L35` — same vocabulary `graft ask` returns. */
+  /** `src/ai/providers.ts:L28-L35` — same vocabulary `symgraph ask` returns. */
   at: string;
 }
 

@@ -12,7 +12,7 @@ function probeFor(home: string, repo: string): DetectProbe {
     dirExists: (p) => { try { return statSync(p).isDirectory(); } catch { return false; } },
   };
 }
-function fresh(): string { return mkdtempSync(join(tmpdir(), 'graft-registry-')); }
+function fresh(): string { return mkdtempSync(join(tmpdir(), 'symgraph-registry-')); }
 
 test('registry exposes the known hosts', () => {
   assert.deepEqual(hostIds().sort(), ['adal', 'agents', 'antigravity', 'copilot', 'cursor', 'gemini', 'grok', 'hermes', 'kiro', 'windsurf']);

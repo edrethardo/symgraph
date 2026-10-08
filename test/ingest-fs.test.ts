@@ -8,7 +8,7 @@ import { shouldSkipDir, walkDir, SKIP_DIRS } from "../src/ingest/fs.js";
 import { discoverScopes, discoverWorkspaceChildren } from "../src/graph/scopes.js";
 
 function fixture(tag: string): string {
-  const dir = mkdtempSync(join(tmpdir(), `graft-walk-${tag}-`));
+  const dir = mkdtempSync(join(tmpdir(), `symgraph-walk-${tag}-`));
   execFileSync("git", ["init", "-q"], { cwd: dir });
   return dir;
 }
@@ -26,8 +26,8 @@ function commitAll(root: string, message: string, forcePaths: string[] = []): vo
   runGit(root, ["add", "-A"]);
   if (forcePaths.length > 0) runGit(root, ["add", "-f", "--", ...forcePaths]);
   runGit(root, [
-    "-c", "user.name=Graft Tests",
-    "-c", "user.email=graft-tests@example.invalid",
+    "-c", "user.name=Symgraph Tests",
+    "-c", "user.email=symgraph-tests@example.invalid",
     "commit", "-qm", message,
   ]);
 }
@@ -169,7 +169,7 @@ test("walkDir follows initialized submodules only when enabled, with their own G
 });
 
 test("walkDir retains fixed skips and filesystem fallback outside Git", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-walk-nongit-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-walk-nongit-"));
   try {
     write(dir, "src/app.ts");
     write(dir, "node_modules/pkg/index.ts");
@@ -190,10 +190,10 @@ test("walkDir retains fixed skips and filesystem fallback outside Git", () => {
  * git-child filter (src/graph/scopes.ts). This introduces `shouldSkipDir` as
  * the single source of truth, with an optional `includes` param: a name in it
  * is removed from the effective skip set for this repo's walks (persisted via
- * `graft build --include-dir`), while a dot-directory stays non-overridable
+ * `symgraph build --include-dir`), while a dot-directory stays non-overridable
  * regardless.
  *
- * `--include-dir` lifts only graft's OWN skip list. In a Git repo, Git's
+ * `--include-dir` lifts only symgraph's OWN skip list. In a Git repo, Git's
  * ignore rules stay authoritative: an ignored directory remains excluded even
  * when named — un-ignore it (or `git add -f`) to index it, the same contract
  * the walker already applies to tracked-but-ignored files.
@@ -217,7 +217,7 @@ test("A5: shouldSkipDir(name, includes) removes a SKIP_DIRS name from the skip s
 });
 
 test("A5: walkDir(dir, includes) descends into an included SKIP_DIRS-named directory (filesystem fallback)", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-walkdir-include-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-walkdir-include-"));
   try {
     mkdirSync(join(dir, "build"), { recursive: true });
     writeFileSync(join(dir, "build", "real.ts"), "export const X = 1;\n");
@@ -268,7 +268,7 @@ test("A5: --include-dir does not override gitignore — an ignored directory sta
  * it fails to skip. Deliberately not a git repo, so walkDir exercises the
  * filesystem fallback where the built-in skip list is the only guard. */
 function buildSkipFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-skipdirs-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-skipdirs-"));
   const seed = (relDir: string, sourceName: string) => {
     const sub = join(dir, relDir);
     mkdirSync(sub, { recursive: true });
@@ -349,8 +349,8 @@ function underRoot(root: string, abs: string): boolean {
 }
 
 test("walkDir indexes a directory when the input root itself is a symlink (#143)", () => {
-  const real = mkdtempSync(join(tmpdir(), "graft-walk-symlink-real-"));
-  const wrap = mkdtempSync(join(tmpdir(), "graft-walk-symlink-wrap-"));
+  const real = mkdtempSync(join(tmpdir(), "symgraph-walk-symlink-real-"));
+  const wrap = mkdtempSync(join(tmpdir(), "symgraph-walk-symlink-wrap-"));
   const link = join(wrap, "root");
   try {
     write(real, "src/app.ts");
@@ -371,7 +371,7 @@ test("walkDir indexes a directory when the input root itself is a symlink (#143)
 
 test("walkDir indexes a Git repo when the input root is a symlink to that repo (#143)", () => {
   const real = fixture("symlink-git-real");
-  const wrap = mkdtempSync(join(tmpdir(), "graft-walk-symlink-gitwrap-"));
+  const wrap = mkdtempSync(join(tmpdir(), "symgraph-walk-symlink-gitwrap-"));
   const link = join(wrap, "root");
   try {
     write(real, "src/app.ts");
@@ -384,7 +384,7 @@ test("walkDir indexes a Git repo when the input root is a symlink to that repo (
 });
 
 test("walkDir reports a broken symlink root instead of a generic scandir ENOENT (#143)", (t) => {
-  const wrap = mkdtempSync(join(tmpdir(), "graft-walk-broken-link-"));
+  const wrap = mkdtempSync(join(tmpdir(), "symgraph-walk-broken-link-"));
   const link = join(wrap, "root");
   try {
     try {
@@ -405,8 +405,8 @@ test("walkDir reports a broken symlink root instead of a generic scandir ENOENT 
 });
 
 test("walkDir does not follow an internal file or directory symlink (#143)", (t) => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-walk-internal-link-"));
-  const outside = mkdtempSync(join(tmpdir(), "graft-walk-outside-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-walk-internal-link-"));
+  const outside = mkdtempSync(join(tmpdir(), "symgraph-walk-outside-"));
   try {
     write(dir, "src/app.ts");
     write(dir, "src/real.ts", "export const real = 1;\n");
@@ -431,7 +431,7 @@ test("walkDir does not follow an internal file or directory symlink (#143)", (t)
 });
 
 test("walkDir does not recurse forever through an internal symlink to the root (#143)", { timeout: 5_000 }, () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-walk-loop-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-walk-loop-"));
   try {
     write(dir, "src/app.ts");
     symlinkDirectory(dir, join(dir, "src", "loop"));
@@ -442,7 +442,7 @@ test("walkDir does not recurse forever through an internal symlink to the root (
 });
 
 test("walkDir on an ordinary directory is unchanged when siblings are symlink fixtures (#143)", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-walk-ordinary-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-walk-ordinary-"));
   try {
     write(dir, "src/app.ts");
     write(dir, "node_modules/pkg/index.ts");

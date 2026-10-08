@@ -2,7 +2,7 @@
  * Blast radius of a diff: what else in the repo depends on the lines this change
  * touched.
  *
- * The whole command is a join between two things graft already has — git's changed
+ * The whole command is a join between two things symgraph already has — git's changed
  * line ranges (`diff.ts`) and the wiring graph's incoming edges (`traverse.ts`) —
  * so there is no new graph logic here, only the seeding rule:
  *
@@ -54,7 +54,7 @@ export interface Impacted {
  * Where a cluster's label came from — the rungs of the naming ladder.
  *
  * `concept` — a concept node from a `--deep` build claims every file in the cluster.
- * `named`   — `graft blast --name` asked a model to name this cluster (see name.ts).
+ * `named`   — `symgraph blast --name` asked a model to name this cluster (see name.ts).
  * `symbol`  — the deterministic backstop: the cluster's most significant symbol.
  *
  * A bare directory is never a label. The whole point of the picture is that a
@@ -300,7 +300,7 @@ function changedAreas(
   }
 
   // Group by DIRECTORY, not by concept. Concepts in a well-summarised repo are
-  // near-file-grained — graft's own PR produced nine of them, one file each — so
+  // near-file-grained — symgraph's own PR produced nine of them, one file each — so
   // grouping the diff by concept groups nothing: the left side was nine circles
   // with near-identical truncated names. A directory is the coarser unit reviewers
   // already use, and a concept name is only worth borrowing when one concept
@@ -432,7 +432,7 @@ function sharedConcept(paths: string[], index: ModuleIndex): string | null {
  * Reached with no concept, no cache and no API key, so this is what guarantees a
  * circle never carries a bare directory. It is a fact rather than a guess — the
  * reviewer can grep the name — which is why it beats borrowing a neighbouring
- * concept: on graft's own graph that borrowing labelled the freshness gate
+ * concept: on symgraph's own graph that borrowing labelled the freshness gate
  * "Graph Extraction and Loading", which misleads worse than any path.
  */
 export function hubLabel(names: string[], fallback: string): string {
@@ -489,7 +489,7 @@ function groupByModule(
   }
 
   // Test-only modules are separated, not just sorted last. On a repo with a test
-  // per module they are the majority of the graph's dependents — graft's own 24-file
+  // per module they are the majority of the graph's dependents — symgraph's own 24-file
   // PR produced 31 modules, 24 of them a single test file — so leaving them in the
   // same list means they crowd out every module a reviewer needs whatever the caps
   // are. "Your tests reference the thing you changed" is one line, not 24 sections.

@@ -68,7 +68,7 @@ function commit(root: string, who: Author, file: string, daysAgo: number, body: 
  * `src/b.ts` — Frankie only, plus a bot.
  */
 function fixture(): string {
-  const root = mkdtempSync(join(tmpdir(), "graft-owners-"));
+  const root = mkdtempSync(join(tmpdir(), "symgraph-owners-"));
   git(root, ["init", "-q", "-b", "main"]);
   git(root, ["config", "user.name", "t"]);
   git(root, ["config", "user.email", "t@example.com"]);
@@ -125,7 +125,7 @@ test("drops bots and the PR author", () => {
 });
 
 test("the share floor yields when there is nobody else", () => {
-  const root = mkdtempSync(join(tmpdir(), "graft-owners-solo-"));
+  const root = mkdtempSync(join(tmpdir(), "symgraph-owners-solo-"));
   git(root, ["init", "-q", "-b", "main"]);
   git(root, ["config", "user.name", "t"]);
   git(root, ["config", "user.email", "t@example.com"]);
@@ -139,7 +139,7 @@ test("the share floor yields when there is nobody else", () => {
 });
 
 test("outside a git repository the whole layer stays silent", () => {
-  const notARepo = mkdtempSync(join(tmpdir(), "graft-owners-nogit-"));
+  const notARepo = mkdtempSync(join(tmpdir(), "symgraph-owners-nogit-"));
   writeFileSync(join(notARepo, "a.ts"), "// x\n");
   assert.deepEqual(ownersFor(notARepo, ["a.ts"], { now: NOW }), []);
 });
@@ -179,7 +179,7 @@ test("the two ways an author is kept out of their own suggestions", () => {
   const a = ownersFor(root, ["src/a.ts"], { now: NOW, exclude: authors });
   assert.ok(!a.some((o) => o.name === FRANKIE.name), "an author of the range is not a reviewer of it");
 
-  // Local: no range exists, so the git identity stands in. Without this, `graft
+  // Local: no range exists, so the git identity stands in. Without this, `symgraph
   // blast` on a dirty tree tells you to tag yourself.
   git(root, ["config", "user.name", SHRISH.name]);
   git(root, ["config", "user.email", SHRISH.email]);

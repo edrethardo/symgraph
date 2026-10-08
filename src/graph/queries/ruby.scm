@@ -56,7 +56,7 @@
 ; Calls
 ; NB: only explicit call nodes — the upstream tags.scm also tags bare
 ; [(identifier)(constant)] as @reference.call gated by (#is-not? local), but that
-; predicate needs the paired @local.* captures (from locals.scm, which graft does
+; predicate needs the paired @local.* captures (from locals.scm, which symgraph does
 ; not load) to mean anything. Without them it's a no-op, so bare *variable reads*
 ; that share a name with a same-file/unique method become bogus `calls` edges
 ; (resolve.ts can't tell a var read from a zero-arg call). Dropped for precision —

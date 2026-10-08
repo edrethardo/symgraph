@@ -19,7 +19,7 @@ import { readGraph, wiringPath } from "../src/graph/write.js";
 import { tmpRepo } from "./helpers.js";
 
 test("callers includes an imported function passed as a value (#34)", async () => {
-  const root = tmpRepo("graft-references-");
+  const root = tmpRepo("symgraph-references-");
   mkdirSync(join(root, "src"), { recursive: true });
   writeFileSync(
     join(root, "src", "gate.ts"),
@@ -49,7 +49,7 @@ test("callers includes an imported function passed as a value (#34)", async () =
   );
 
   await buildGraph(root, { reuse: false });
-  const graph = readGraph(wiringPath(join(root, "graft")))!;
+  const graph = readGraph(wiringPath(join(root, "symgraph")))!;
   const target = graph.nodes.find((node) => node.id === "src/gate.ts#isActive");
   assert.ok(target, "fixture target was not indexed");
 
@@ -65,7 +65,7 @@ test("callers includes an imported function passed as a value (#34)", async () =
 });
 
 test("aliased named imports resolve references to the exported symbol", async () => {
-  const root = tmpRepo("graft-reference-alias-");
+  const root = tmpRepo("symgraph-reference-alias-");
   mkdirSync(join(root, "src"), { recursive: true });
   writeFileSync(join(root, "src", "gate.ts"), "export function isActive(): boolean { return true; }\n");
   writeFileSync(
@@ -80,7 +80,7 @@ test("aliased named imports resolve references to the exported symbol", async ()
   );
 
   await buildGraph(root, { reuse: false });
-  const graph = readGraph(wiringPath(join(root, "graft")))!;
+  const graph = readGraph(wiringPath(join(root, "symgraph")))!;
   assert.ok(
     graph.edges.some(
       (edge) =>
@@ -101,7 +101,7 @@ test("aliased named imports resolve references to the exported symbol", async ()
 const CALL_SITES = 60;
 
 test("a direct call is not also recorded as a value reference, at scale (#116)", () => {
-  const root = tmpRepo("graft-reference-scale-");
+  const root = tmpRepo("symgraph-reference-scale-");
   mkdirSync(join(root, "src"), { recursive: true });
   writeFileSync(
     join(root, "src", "dep.ts"),
@@ -181,7 +181,7 @@ test("a direct call is not also recorded as a value reference, at scale (#116)",
 });
 
 test("a local binding that shadows an import does not create a false reference", async () => {
-  const root = tmpRepo("graft-reference-shadow-");
+  const root = tmpRepo("symgraph-reference-shadow-");
   mkdirSync(join(root, "src"), { recursive: true });
   writeFileSync(join(root, "src", "gate.ts"), "export function isActive(): boolean { return true; }\n");
   writeFileSync(
@@ -196,7 +196,7 @@ test("a local binding that shadows an import does not create a false reference",
   );
 
   await buildGraph(root, { reuse: false });
-  const graph = readGraph(wiringPath(join(root, "graft")))!;
+  const graph = readGraph(wiringPath(join(root, "symgraph")))!;
   assert.equal(
     graph.edges.some(
       (edge) =>

@@ -17,14 +17,14 @@ function gitRun(root: string, args: string[]): void {
 function commitAll(root: string, message: string): void {
   gitRun(root, ["add", "-A"]);
   gitRun(root, [
-    "-c", "user.name=Graft Tests",
-    "-c", "user.email=graft-tests@example.invalid",
+    "-c", "user.name=Symgraph Tests",
+    "-c", "user.email=symgraph-tests@example.invalid",
     "commit", "-qm", message,
   ]);
 }
 
 function graphOf(root: string): GraphV1 {
-  const graph = readGraph(wiringPath(join(root, "graft")));
+  const graph = readGraph(wiringPath(join(root, "symgraph")));
   assert.ok(graph, `expected a graph for ${root}`);
   return graph;
 }
@@ -67,7 +67,7 @@ test("follow-submodules is opt-in, persisted for MCP refresh, and explicitly rev
     assert.ok(!defaultGraph.nodes.some((node) => node.path.startsWith("modules/child/")));
     assert.ok(!defaultGraph.nodes.some((node) => node.path.startsWith("build/")));
     assert.equal(
-      existsSync(join(parent, ".graft", "config.json")),
+      existsSync(join(parent, ".symgraph", "config.json")),
       false,
       "an implicit default must not create local config",
     );
@@ -80,7 +80,7 @@ test("follow-submodules is opt-in, persisted for MCP refresh, and explicitly rev
       includeDirs: ["build"],
       followSubmodules: true,
     });
-    assert.ok(isClean(probeDrift(parent, join(parent, "graft"))!));
+    assert.ok(isClean(probeDrift(parent, join(parent, "symgraph"))!));
 
     expectCliOk(["build", parent]);
     assert.ok(
@@ -93,13 +93,13 @@ test("follow-submodules is opt-in, persisted for MCP refresh, and explicitly rev
       childCheckout,
       "export function changedSubValue(): number { return 2; }\n",
     );
-    const mcp = await callTool(parent, "graft_file_api", {
+    const mcp = await callTool(parent, "symgraph_file_api", {
       file: "modules/child/src/sub.ts",
     });
     assert.equal(mcp.isError, false, mcp.text);
-    assert.match(mcp.text, /^\[graft\] refreshed the graph/);
+    assert.match(mcp.text, /^\[symgraph\] refreshed the graph/);
     assert.match(mcp.text, /changedSubValue/);
-    assert.ok(isClean(probeDrift(parent, join(parent, "graft"))!));
+    assert.ok(isClean(probeDrift(parent, join(parent, "symgraph"))!));
 
     expectCliOk(["build", parent, "--no-follow-submodules"]);
     const disabled = graphOf(parent);
@@ -112,14 +112,14 @@ test("follow-submodules is opt-in, persisted for MCP refresh, and explicitly rev
       includeDirs: ["build"],
       followSubmodules: false,
     });
-    assert.ok(isClean(probeDrift(parent, join(parent, "graft"))!));
+    assert.ok(isClean(probeDrift(parent, join(parent, "symgraph"))!));
 
     writeFileSync(
       childCheckout,
       "export function ignoredAfterDisable(): number { return 3; }\n",
     );
     assert.ok(
-      isClean(probeDrift(parent, join(parent, "graft"))!),
+      isClean(probeDrift(parent, join(parent, "symgraph"))!),
       "disabled child edits must not trigger automatic refresh",
     );
 

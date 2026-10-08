@@ -11,7 +11,7 @@ import {
   type PickerKey,
 } from '../src/cli-picker.js';
 
-function fresh(): string { return mkdtempSync(join(tmpdir(), 'graft-picker-')); }
+function fresh(): string { return mkdtempSync(join(tmpdir(), 'symgraph-picker-')); }
 
 function fullHome(): string {
   const home = fresh();
@@ -219,7 +219,7 @@ test('formatNonInteractiveHelp lists detected ids and a runnable command', () =>
   const text = formatNonInteractiveHelp(['claude', 'cursor']);
   assert.match(text, /nothing written/);
   assert.match(text, /detected: claude, cursor/);
-  assert.match(text, /graft init --agents claude cursor {3}# wire these/);
+  assert.match(text, /symgraph init --agents claude cursor {3}# wire these/);
   assert.match(text, /--dry-run/);
 });
 
@@ -228,6 +228,6 @@ test('formatNonInteractiveHelp still helps when nothing was detected', () => {
   assert.match(text, /detected: none/);
   // No `--yes` example, since there is nothing for it to wire (the header
   // still mentions the flag by name).
-  assert.doesNotMatch(text, /^ +graft init --yes/m);
+  assert.doesNotMatch(text, /^ +symgraph init --yes/m);
   assert.match(text, /--agents claude/);
 });

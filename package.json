@@ -1,7 +1,7 @@
 {
-  "name": "@nanonets/graft",
-  "version": "0.11.1-fork.1",
-  "description": "Build a repo's context graph as a folder of linked markdown files: a local, regenerable cache that every query keeps in sync with your code.",
+  "name": "symgraph",
+  "version": "0.12.0",
+  "description": "Index a repo's symbols, spans and call graph locally so coding agents can look code up instead of grepping for it.",
   "keywords": [
     "ai",
     "agents",
@@ -9,16 +9,16 @@
     "context",
     "codebase",
     "llm",
-    "graft"
+    "symgraph"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NanoNets/context-graph-engine.git"
+    "url": "git+https://github.com/edrethardo/Graft.git"
   },
-  "homepage": "https://github.com/NanoNets/context-graph-engine#readme",
+  "homepage": "https://github.com/edrethardo/Graft#readme",
   "bugs": {
-    "url": "https://github.com/NanoNets/context-graph-engine/issues"
+    "url": "https://github.com/edrethardo/Graft/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -34,7 +34,8 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "graft": "dist/cli.js"
+    "symgraph": "dist/cli.js",
+    "graft": "dist/legacy-bin.js"
   },
   "files": [
     "dist",

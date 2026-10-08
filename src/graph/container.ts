@@ -16,7 +16,7 @@
  * **The span shift is the whole risk here.** `extractFile` numbers its spans from
  * the start of the string it was handed, so every node comes back pointing at a
  * line in the script, not in the `.vue`. A span that is off by even one line is
- * worse than not indexing the file at all: graft's promise is that its
+ * worse than not indexing the file at all: symgraph's promise is that its
  * `file:line` is exact, and a plausible-but-wrong line silently sends the reader
  * to the wrong place. `test/container-extract.test.ts` pins this against
  * fixtures whose true line numbers are known.

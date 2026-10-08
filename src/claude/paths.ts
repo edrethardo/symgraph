@@ -1,19 +1,19 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-// This module ships inside the package at <pkgRoot>/dist/claude/paths.js. Resolving graft's
+// This module ships inside the package at <pkgRoot>/dist/claude/paths.js. Resolving symgraph's
 // own CLI and sibling scripts relative to THIS file — not the project dir — is what makes the
-// hooks work when graft is installed as a dependency in someone else's repo (where
-// <projectDir>/dist/ does not exist). In graft's own repo it resolves to ./dist all the same.
+// hooks work when symgraph is installed as a dependency in someone else's repo (where
+// <projectDir>/dist/ does not exist). In symgraph's own repo it resolves to ./dist all the same.
 const CLAUDE_DIR = dirname(fileURLToPath(import.meta.url));
 
-/** Absolute path to the graft CLI (`<pkgRoot>/dist/cli.js`), resolved from this module. */
-export function graftCliPath(): string {
+/** Absolute path to the symgraph CLI (`<pkgRoot>/dist/cli.js`), resolved from this module. */
+export function symgraphCliPath(): string {
   return join(CLAUDE_DIR, '..', 'cli.js');
 }
 
 /** Absolute path to this package's `dist/claude` dir. Baked into the generated shims at
- * init time as their primary resolution candidate, so the statusline/hooks find graft
+ * init time as their primary resolution candidate, so the statusline/hooks find symgraph
  * without runtime guesswork — correct regardless of how Node was installed. */
 export function claudeDistDir(): string {
   return CLAUDE_DIR;

@@ -1,5 +1,5 @@
 /**
- * `graft viz --export`: one self-contained file, which is what makes a per-PR
+ * `symgraph viz --export`: one self-contained file, which is what makes a per-PR
  * hosted view possible without a server.
  *
  * The three assertions that matter are all about the inlining, because each failure
@@ -25,14 +25,14 @@ const VIEWER_HTML = `<!doctype html>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header class="appbar"><div class="brand"><b>graft</b><span id="repoName"></span></div></header>
+<header class="appbar"><div class="brand"><b>symgraph</b><span id="repoName"></span></div></header>
 <script type="module" src="/app.js"></script>
 </body>
 </html>
 `;
 
 function viewerDir(appJs = "console.log('app');"): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-viewer-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-viewer-"));
   writeFileSync(join(dir, "index.html"), VIEWER_HTML);
   writeFileSync(join(dir, "style.css"), ":root{--k-method:#3AA7C9}");
   writeFileSync(join(dir, "app.js"), appJs);
@@ -40,7 +40,7 @@ function viewerDir(appJs = "console.log('app');"): string {
 }
 
 function contextDir(summary = "Alpha coordinates the show."): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ctx-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ctx-"));
   writeFileSync(
     join(dir, "alpha.md"),
     `---
@@ -71,7 +71,7 @@ ${summary}
 }
 
 function out(): string {
-  return mkdtempSync(join(tmpdir(), "graft-out-"));
+  return mkdtempSync(join(tmpdir(), "symgraph-out-"));
 }
 
 test("viz export: one file, with both graphs and every asset inlined", () => {
@@ -84,14 +84,14 @@ test("viz export: one file, with both graphs and every asset inlined", () => {
   assert.ok(!page.includes('href="/style.css"'), "the stylesheet link must be gone");
   assert.ok(!page.includes('src="/app.js"'), "the script src must be gone");
   assert.match(page, /<style>\n:root\{--k-method:#3AA7C9\}\n<\/style>/);
-  assert.match(page, /window\.__GRAFT_DATA__ = \{/);
+  assert.match(page, /window\.__SYMGRAPH_DATA__ = \{/);
   // The subtitle is how a reader knows WHICH pull request they opened.
   assert.match(page, /"subtitle":"PR #7"/);
   assert.match(page, /"repoName":"demo"/);
 });
 
 test("viz export: opens on the tab that has content, not on an empty Context tab", () => {
-  // A structural `graft build` writes wiring cards (no frontmatter) plus INDEX.md,
+  // A structural `symgraph build` writes wiring cards (no frontmatter) plus INDEX.md,
   // and a frontmatter-less file still assembles to one node named after itself — so
   // the Context tab the viewer starts on holds exactly one dot. Exporting from that
   // build used to publish precisely that, with the whole wiring graph hidden behind
@@ -108,7 +108,7 @@ test("viz export: opens on the tab that has content, not on an empty Context tab
   assert.equal(rich.defaultTab, "context");
 
   // And with no wiring graph there is nothing to switch to.
-  const noCode = mkdtempSync(join(tmpdir(), "graft-ctx-"));
+  const noCode = mkdtempSync(join(tmpdir(), "symgraph-ctx-"));
   writeFileSync(join(noCode, "alpha.md"), "---\nname: Alpha\nslug: alpha\ntype: system\nsources: []\nlinks: []\n---\n");
   const only = exportViz({ contextDir: noCode, viewerDir: viewerDir(), outDir: out(), repoName: "demo" });
   assert.equal(only.codeNodes, 0);
@@ -165,7 +165,7 @@ test("viz export: asset-path text inside the assets does not fail a correct expo
   const res = exportViz({ contextDir: contextDir(), viewerDir: dir, outDir: out(), repoName: "demo" });
   const page = readFileSync(res.file, "utf8");
   assert.match(page, /replaces <link rel="stylesheet" href="\/style\.css">/, "the comment survives inlining");
-  assert.match(page, /window\.__GRAFT_DATA__/, "and the export still happened");
+  assert.match(page, /window\.__SYMGRAPH_DATA__/, "and the export still happened");
 });
 
 test("viz export: tabs can be trimmed, and the payload goes with them", () => {
@@ -193,7 +193,7 @@ test("viz --tabs: a bad tab name fails loudly rather than exporting a page missi
     }
   };
 
-  // Deliberately run where there is NO graft index — CI is such a checkout, and
+  // Deliberately run where there is NO symgraph index — CI is such a checkout, and
   // the first version of this test only passed on a machine that happened to have
   // one, so it broke main the day it merged.
   const bare = out();

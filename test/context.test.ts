@@ -59,7 +59,7 @@ test("init builds one markdown node per entity, with links and a manifest", asyn
     assert.equal(r.links, 2);
     assert.equal(r.files, 2);
 
-    const ctx = join(dir, "graft");
+    const ctx = join(dir, "symgraph");
     assert.ok(existsSync(join(ctx, "auth-service.md")));
     assert.ok(existsSync(join(ctx, "token-store.md")));
     assert.ok(existsSync(join(ctx, "billing.md")));
@@ -92,8 +92,8 @@ test("check passes immediately after init", async () => {
   }
 });
 
-// #213 — per-file cards for root-level sources land in graft/<stem>.md, the same
-// directory readNodes() scans for concept nodes. Nested cards (graft/src/…) are
+// #213 — per-file cards for root-level sources land in symgraph/<stem>.md, the same
+// directory readNodes() scans for concept nodes. Nested cards (symgraph/src/…) are
 // not scanned. After a deep context build + wiring cards, check must not treat
 // the root file card as a missing concept node.
 test("check: root-level file card is not indexDrift after build (#213)", async () => {
@@ -112,16 +112,16 @@ test("check: root-level file card is not indexDrift after build (#213)", async (
     await buildContext(dir, buildOpts());
     await buildGraph(dir);
 
-    assert.ok(existsSync(join(dir, "graft", "main.md")), "root source gets a top-level file card");
-    assert.ok(existsSync(join(dir, "graft", "src", "foo.md")), "nested source card stays in a subdir");
+    assert.ok(existsSync(join(dir, "symgraph", "main.md")), "root source gets a top-level file card");
+    assert.ok(existsSync(join(dir, "symgraph", "src", "foo.md")), "nested source card stays in a subdir");
 
     const r = checkContext(dir);
     assert.equal(r.ok, true, `expected clean check, got ${JSON.stringify(r)}`);
     assert.deepEqual(r.indexDrift, []);
 
-    // A hand-dropped .md in graft/ is still an orphaned node — the detector
+    // A hand-dropped .md in symgraph/ is still an orphaned node — the detector
     // must not go silent for anything that is not a recorded per-file card.
-    writeFileSync(join(dir, "graft", "notes.md"), "# stray notes\n");
+    writeFileSync(join(dir, "symgraph", "notes.md"), "# stray notes\n");
     const stray = checkContext(dir);
     assert.equal(stray.ok, false);
     assert.ok(
@@ -138,7 +138,7 @@ test("check: root-level file card is not indexDrift after build (#213)", async (
 //      a synthesized "Server" node). writeCards must not clobber the concept.
 //   2. A root file card whose source is not in manifest.files (#215 only
 //      skips stems recorded there). Graph-indexed extras (e.g. .lua) still
-//      land at graft/<stem>.md and must not become indexDrift.
+//      land at symgraph/<stem>.md and must not become indexDrift.
 test("check: root PHP file card is not indexDrift after build (#261)", async () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgraph-root-php-"));
   try {
@@ -149,8 +149,8 @@ test("check: root PHP file card is not indexDrift after build (#261)", async () 
     await buildContext(dir, buildOpts());
     await buildGraph(dir);
 
-    assert.ok(existsSync(join(dir, "graft", "server.md")), "root php source gets a top-level file card");
-    assert.ok(existsSync(join(dir, "graft", "lib", "deep.md")), "nested php card stays in a subdir");
+    assert.ok(existsSync(join(dir, "symgraph", "server.md")), "root php source gets a top-level file card");
+    assert.ok(existsSync(join(dir, "symgraph", "lib", "deep.md")), "nested php card stays in a subdir");
 
     const r = checkContext(dir);
     assert.equal(r.ok, true, `expected clean check, got ${JSON.stringify(r)}`);
@@ -175,26 +175,26 @@ test("check: root file card must not overwrite a concept with the same slug (#26
 
     await buildContext(dir, buildOpts());
     assert.match(
-      readFileSync(join(dir, "graft", "server.md"), "utf8"),
+      readFileSync(join(dir, "symgraph", "server.md"), "utf8"),
       /^slug:\s*server\s*$/m,
-      "context build writes a concept node at graft/server.md",
+      "context build writes a concept node at symgraph/server.md",
     );
 
     await buildGraph(dir);
 
-    const concept = readFileSync(join(dir, "graft", "server.md"), "utf8");
+    const concept = readFileSync(join(dir, "symgraph", "server.md"), "utf8");
     assert.match(concept, /^slug:\s*server\s*$/m, "file card must not clobber the concept node");
     assert.ok(
-      existsSync(join(dir, "graft", "_root", "server.md")),
-      "root file card relocates to graft/_root/ when the stem is a concept slug",
+      existsSync(join(dir, "symgraph", "_root", "server.md")),
+      "root file card relocates to symgraph/_root/ when the stem is a concept slug",
     );
-    assert.match(readFileSync(join(dir, "graft", "_root", "server.md"), "utf8"), /^# server\.php/m);
+    assert.match(readFileSync(join(dir, "symgraph", "_root", "server.md"), "utf8"), /^# server\.php/m);
 
     const r = checkContext(dir);
     assert.equal(r.ok, true, `expected clean check, got ${JSON.stringify(r)}`);
     assert.deepEqual(r.indexDrift, []);
 
-    writeFileSync(join(dir, "graft", "notes.md"), "# stray notes\n");
+    writeFileSync(join(dir, "symgraph", "notes.md"), "# stray notes\n");
     const stray = checkContext(dir);
     assert.equal(stray.ok, false);
     assert.ok(
@@ -219,7 +219,7 @@ test("check: root file card not in manifest.files is not indexDrift (#261)", asy
     await buildContext(dir, buildOpts());
     await buildGraph(dir);
 
-    assert.ok(existsSync(join(dir, "graft", "server.md")), "graph still writes a root file card");
+    assert.ok(existsSync(join(dir, "symgraph", "server.md")), "graph still writes a root file card");
 
     const r = checkContext(dir);
     assert.equal(r.ok, true, `expected clean check, got ${JSON.stringify(r)}`);
@@ -268,14 +268,14 @@ test("indexFreshness/staleBanner: recorded files gone from disk (the branch-swit
     assert.ok(stale && stale.missing >= 1, "missing count rises when a recorded file vanishes");
     const banner = staleBanner(stale);
     assert.match(banner ?? "", /ahead of your working tree/, "banner fires when stale");
-    assert.match(banner ?? "", /graft grep/, "banner steers to graft grep, not raw grep");
+    assert.match(banner ?? "", /symgraph grep/, "banner steers to symgraph grep, not raw grep");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("indexFreshness returns null when there is no graph", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-fresh-nograph-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-fresh-nograph-"));
   try {
     assert.equal(indexFreshness(dir), null);
     assert.equal(staleBanner(null), null);
@@ -334,7 +334,7 @@ test("A5: a persisted --include-dir override reaches context/build.ts's file lis
 });
 
 function manifestFiles(dir: string): string[] {
-  const manifest = JSON.parse(readFileSync(join(dir, "graft", "manifest.json"), "utf8"));
+  const manifest = JSON.parse(readFileSync(join(dir, "symgraph", "manifest.json"), "utf8"));
   return manifest.files.map((f: { path: string }) => f.path);
 }
 
@@ -355,7 +355,7 @@ test("human notes below the generated block survive regeneration", async () => {
   const dir = makeFixture();
   try {
     await buildContext(dir, buildOpts());
-    const path = join(dir, "graft", "billing.md");
+    const path = join(dir, "symgraph", "billing.md");
     const withNote = readFileSync(path, "utf8") + "\nHand-written note: watch out for retries.\n";
     writeFileSync(path, withNote);
     await buildContext(dir, buildOpts());
@@ -365,11 +365,11 @@ test("human notes below the generated block survive regeneration", async () => {
   }
 });
 
-// `graft check` on the CLI combines the markdown-context layer (checkContext) and the
-// wiring-graph layer (checkGraph). A keyless `graft build` (no --deep) only ever produces
+// `symgraph check` on the CLI combines the markdown-context layer (checkContext) and the
+// wiring-graph layer (checkGraph). A keyless `symgraph build` (no --deep) only ever produces
 // the wiring layer — manifest.json (markdown layer) is never written — so `check` must not
 // treat that absence as failure on its own.
-test("graft check: keyless build (no --deep) exits 0 — wiring graph present, markdown layer never built", () => {
+test("symgraph check: keyless build (no --deep) exits 0 — wiring graph present, markdown layer never built", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgraph-cli-"));
   try {
     writeFileSync(join(dir, "math.ts"), "export function add(a: number, b: number): number {\n  return a + b;\n}\n");
@@ -386,19 +386,19 @@ test("graft check: keyless build (no --deep) exits 0 — wiring graph present, m
   }
 });
 
-test("graft check: neither layer ever built exits 1", () => {
+test("symgraph check: neither layer ever built exits 1", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgraph-cli-"));
   try {
     const r = runCli(["check", dir]);
     assert.equal(r.status, 1);
     assert.match(r.stdout, /NO GRAPH/);
-    assert.match(r.stdout, /graft build/);
+    assert.match(r.stdout, /symgraph build/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("graft check: keyless build then code changes (wiring stale) exits 1", () => {
+test("symgraph check: keyless build then code changes (wiring stale) exits 1", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgraph-cli-"));
   try {
     const file = join(dir, "math.ts");
@@ -423,15 +423,15 @@ test("graft check: keyless build then code changes (wiring stale) exits 1", () =
   }
 });
 
-// ensureGitignored — every `graft build` self-ignores its regenerable graph dir.
-test("ensureGitignored: creates .gitignore with the graft/ entry when none exists", () => {
+// ensureGitignored — every `symgraph build` self-ignores its regenerable graph dir.
+test("ensureGitignored: creates .gitignore with the symgraph/ entry when none exists", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgi-"));
   try {
     ensureGitignored(dir, contextDirFor(dir));
     const gi = readFileSync(join(dir, ".gitignore"), "utf8");
-    // root-ANCHORED (#79): an unanchored `graft/` also matched `.claude/skills/graft/`
-    assert.match(gi, /^\/graft\/$/m);
-    assert.doesNotMatch(gi, /^graft\/$/m, "must not write the unanchored form");
+    // root-ANCHORED (#79): an unanchored `symgraph/` also matched `.claude/skills/symgraph/`
+    assert.match(gi, /^\/symgraph\/$/m);
+    assert.doesNotMatch(gi, /^symgraph\/$/m, "must not write the unanchored form");
     assert.match(gi, /regenerable, not committed/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -446,7 +446,7 @@ test("ensureGitignored: appends to an existing .gitignore without clobbering it"
     const gi = readFileSync(join(dir, ".gitignore"), "utf8");
     assert.match(gi, /node_modules\//);
     assert.match(gi, /dist\//);
-    assert.match(gi, /^\/graft\/$/m);
+    assert.match(gi, /^\/symgraph\/$/m);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -460,22 +460,22 @@ test("ensureGitignored: idempotent — a second build adds nothing", () => {
     ensureGitignored(dir, contextDirFor(dir));
     const twice = readFileSync(join(dir, ".gitignore"), "utf8");
     assert.equal(once, twice);
-    assert.equal((twice.match(/^\/graft\/$/gm) ?? []).length, 1);
+    assert.equal((twice.match(/^\/symgraph\/$/gm) ?? []).length, 1);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("ensureGitignored: an existing unanchored `graft/` or hand-anchored `/graft/` is NOT re-appended (#79)", () => {
-  for (const existing of ["graft/", "graft", "/graft/"]) {
+test("ensureGitignored: an existing unanchored `symgraph/` or hand-anchored `/symgraph/` is NOT re-appended (#79)", () => {
+  for (const existing of ["symgraph/", "symgraph", "/symgraph/"]) {
     const dir = mkdtempSync(join(tmpdir(), "ctxgi-"));
     try {
       writeFileSync(join(dir, ".gitignore"), `node_modules/\n${existing}\n`);
       ensureGitignored(dir, contextDirFor(dir));
       const gi = readFileSync(join(dir, ".gitignore"), "utf8");
-      // the presence check recognizes all three spellings → no duplicate graft line added
-      const graftLines = gi.split("\n").filter((l) => /^\/?graft\/?$/.test(l.trim()));
-      assert.equal(graftLines.length, 1, `existing "${existing}" must not be double-appended (got ${graftLines.length})`);
+      // the presence check recognizes all three spellings → no duplicate symgraph line added
+      const symgraphLines = gi.split("\n").filter((l) => /^\/?symgraph\/?$/.test(l.trim()));
+      assert.equal(symgraphLines.length, 1, `existing "${existing}" must not be double-appended (got ${symgraphLines.length})`);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -485,7 +485,7 @@ test("ensureGitignored: an existing unanchored `graft/` or hand-anchored `/graft
 test("ensureGitignored: a `--dir` subpath is root-anchored too (#79)", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgi-"));
   try {
-    // a graft dir nested under the repo (e.g. --dir tools/ctx) still gets a repo-root anchor
+    // a symgraph dir nested under the repo (e.g. --dir tools/ctx) still gets a repo-root anchor
     ensureGitignored(dir, join(dir, "tools", "ctx"));
     const gi = readFileSync(join(dir, ".gitignore"), "utf8");
     assert.match(gi, /^\/tools\/ctx\/$/m);
@@ -494,12 +494,12 @@ test("ensureGitignored: a `--dir` subpath is root-anchored too (#79)", () => {
   }
 });
 
-test("ensureGitignored: recognizes a pre-existing bare `graft` entry (no slash) and stays silent", () => {
+test("ensureGitignored: recognizes a pre-existing bare `symgraph` entry (no slash) and stays silent", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgi-"));
   try {
-    writeFileSync(join(dir, ".gitignore"), "graft\n");
+    writeFileSync(join(dir, ".gitignore"), "symgraph\n");
     ensureGitignored(dir, contextDirFor(dir));
-    assert.equal(readFileSync(join(dir, ".gitignore"), "utf8"), "graft\n");
+    assert.equal(readFileSync(join(dir, ".gitignore"), "utf8"), "symgraph\n");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -508,48 +508,48 @@ test("ensureGitignored: recognizes a pre-existing bare `graft` entry (no slash) 
 test("ensureGitignored: no-op when the graph dir is outside the repo root", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgi-"));
   try {
-    ensureGitignored(dir, join(tmpdir(), "somewhere-else-graft"));
+    ensureGitignored(dir, join(tmpdir(), "somewhere-else-symgraph"));
     assert.equal(existsSync(join(dir, ".gitignore")), false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("ensureGitignored: GRAFT_NO_GITIGNORE=1 skips writing .gitignore", () => {
+test("ensureGitignored: SYMGRAPH_NO_GITIGNORE=1 skips writing .gitignore", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgi-"));
-  process.env.GRAFT_NO_GITIGNORE = "1";
+  process.env.SYMGRAPH_NO_GITIGNORE = "1";
   try {
     ensureGitignored(dir, contextDirFor(dir));
     assert.equal(existsSync(join(dir, ".gitignore")), false);
   } finally {
-    delete process.env.GRAFT_NO_GITIGNORE;
+    delete process.env.SYMGRAPH_NO_GITIGNORE;
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("ensureSearchable: GRAFT_NO_IGNORE=1 skips writing .ignore", () => {
+test("ensureSearchable: SYMGRAPH_NO_IGNORE=1 skips writing .ignore", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxsearch-"));
-  process.env.GRAFT_NO_IGNORE = "1";
+  process.env.SYMGRAPH_NO_IGNORE = "1";
   try {
     ensureSearchable(dir, contextDirFor(dir));
     assert.equal(existsSync(join(dir, ".ignore")), false);
   } finally {
-    delete process.env.GRAFT_NO_IGNORE;
+    delete process.env.SYMGRAPH_NO_IGNORE;
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("graft build with GRAFT_NO_GITIGNORE and GRAFT_NO_IGNORE does not touch ignore files", () => {
+test("symgraph build with SYMGRAPH_NO_GITIGNORE and SYMGRAPH_NO_IGNORE does not touch ignore files", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxgi-build-"));
   try {
     writeFileSync(join(dir, "main.ts"), "export function main(): number {\n  return 1;\n}\n");
     execFileSync(process.execPath, ["--import", "tsx", "src/cli.ts", "build", dir], {
       stdio: "pipe",
-      env: { ...process.env, GRAFT_NO_GITIGNORE: "1", GRAFT_NO_IGNORE: "1" },
+      env: { ...process.env, SYMGRAPH_NO_GITIGNORE: "1", SYMGRAPH_NO_IGNORE: "1" },
     });
     assert.equal(existsSync(join(dir, ".gitignore")), false);
     assert.equal(existsSync(join(dir, ".ignore")), false);
-    assert.equal(existsSync(join(dir, "graft")), true, "build still writes the graph");
+    assert.equal(existsSync(join(dir, "symgraph")), true, "build still writes the graph");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -563,9 +563,9 @@ test("ensureSearchable: re-admits the card tree while excluding the caches", () 
   try {
     ensureSearchable(dir, contextDirFor(dir));
     const ig = readFileSync(join(dir, ".ignore"), "utf8");
-    assert.match(ig, /^!graft\/$/m, "the tree is re-admitted to search");
-    assert.match(ig, /^graft\/\.cache\/$/m, "but not the multi-MB parse memo");
-    assert.match(ig, /^graft\/\.graph\/$/m, "and not wiring.json");
+    assert.match(ig, /^!symgraph\/$/m, "the tree is re-admitted to search");
+    assert.match(ig, /^symgraph\/\.cache\/$/m, "but not the multi-MB parse memo");
+    assert.match(ig, /^symgraph\/\.graph\/$/m, "and not wiring.json");
     assert.match(ig, /ripgrep reads/, "carries the why, for whoever finds this file");
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -582,7 +582,7 @@ test("ensureSearchable: appends to an existing .ignore, and is idempotent", () =
     ensureSearchable(dir, contextDirFor(dir));
     const twice = readFileSync(join(dir, ".ignore"), "utf8");
     assert.equal(once, twice);
-    assert.equal((twice.match(/^!graft\/$/gm) ?? []).length, 1);
+    assert.equal((twice.match(/^!symgraph\/$/gm) ?? []).length, 1);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -592,9 +592,9 @@ test("ensureSearchable: leaves a hand-written negation alone", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxsearch-"));
   try {
     // Someone already had an opinion here — don't append a competing block.
-    writeFileSync(join(dir, ".ignore"), "# mine\n!graft/\n");
+    writeFileSync(join(dir, ".ignore"), "# mine\n!symgraph/\n");
     ensureSearchable(dir, contextDirFor(dir));
-    assert.equal(readFileSync(join(dir, ".ignore"), "utf8"), "# mine\n!graft/\n");
+    assert.equal(readFileSync(join(dir, ".ignore"), "utf8"), "# mine\n!symgraph/\n");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -603,7 +603,7 @@ test("ensureSearchable: leaves a hand-written negation alone", () => {
 test("ensureSearchable: no-op when the graph dir is outside the repo root", () => {
   const dir = mkdtempSync(join(tmpdir(), "ctxsearch-"));
   try {
-    ensureSearchable(dir, join(tmpdir(), "somewhere-else-graft"));
+    ensureSearchable(dir, join(tmpdir(), "somewhere-else-symgraph"));
     assert.equal(existsSync(join(dir, ".ignore")), false);
   } finally {
     rmSync(dir, { recursive: true, force: true });

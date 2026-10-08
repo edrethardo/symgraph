@@ -1,8 +1,8 @@
 /**
- * Core tests for `graft grep` (src/search/grep.ts).
+ * Core tests for `symgraph grep` (src/search/grep.ts).
  *
  * `heavyRarelyRepo()` builds a small real fixture repo (same `builtRepo`
- * pattern as test/mcp-tools.test.ts) and runs the actual `graft build` CLI,
+ * pattern as test/mcp-tools.test.ts) and runs the actual `symgraph build` CLI,
  * so inDegree/innermost-symbol attribution are exercised against a genuine
  * parsed graph, not a hand-rolled one. The narrower fixed/maxHits/zero-hit
  * assertions use a hand-built GraphV1 (just enough for grepGraph's file-node
@@ -48,7 +48,7 @@ function graphOf(nodes: NodeV1[], edges: GraphV1['edges'] = []): GraphV1 {
  * must map to `Container.method`, not `Container`). Built via the real CLI
  * so inDegree comes from genuine `calls` edges. */
 function needleRepo(): string {
-  const d = mkdtempSync(join(tmpdir(), 'graft-grep-'));
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-grep-'));
   mkdirSync(join(d, 'src'), { recursive: true });
   writeFileSync(
     join(d, 'src', 'a.ts'),
@@ -85,7 +85,7 @@ function needleRepo(): string {
 }
 
 function loadBuiltGraph(repo: string): GraphV1 {
-  const g = readGraph(wiringPath(join(repo, 'graft')));
+  const g = readGraph(wiringPath(join(repo, 'symgraph')));
   assert.ok(g, 'expected a built graph.json');
   return g!;
 }
@@ -162,7 +162,7 @@ test('grepGraph: a hit outside every symbol span groups as file-level (symbol: n
 });
 
 test('A3: a duplicate-named definition displays its minted ordinal in the grouped symbol name', () => {
-  const d = mkdtempSync(join(tmpdir(), 'graft-grep-dup-'));
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-grep-dup-'));
   mkdirSync(join(d, 'src'), { recursive: true });
   writeFileSync(
     join(d, 'src', 'dup.ts'),
@@ -210,7 +210,7 @@ test('grepGraph: `in` is a path prefix, not a substring, and errors when it matc
 });
 
 test('grepGraph: `fixed` escapes regex metacharacters — "a.b" does not match "axb"', () => {
-  const d = mkdtempSync(join(tmpdir(), 'graft-grep-fixed-'));
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-grep-fixed-'));
   writeFileSync(join(d, 'x.txt'), 'axb\na.b literal line\n');
   const graph = graphOf([fileNode('x.txt', 2)]);
 
@@ -223,7 +223,7 @@ test('grepGraph: `fixed` escapes regex metacharacters — "a.b" does not match "
 });
 
 test('grepGraph: maxHits truncation surfaces in truncated.hits, not silently dropped', () => {
-  const d = mkdtempSync(join(tmpdir(), 'graft-grep-maxhits-'));
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-grep-maxhits-'));
   const lines = Array.from({ length: 10 }, (_, i) => `NEEDLE line ${i}`).join('\n') + '\n';
   writeFileSync(join(d, 'many.txt'), lines);
   const graph = graphOf([fileNode('many.txt', 10)]);
@@ -238,7 +238,7 @@ test('grepGraph: maxHits truncation surfaces in truncated.hits, not silently dro
 });
 
 test('grepGraph: zero-hit result has the documented shape — empty groups, zero counts, non-silent truncated', () => {
-  const d = mkdtempSync(join(tmpdir(), 'graft-grep-zero-'));
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-grep-zero-'));
   writeFileSync(join(d, 'x.txt'), 'nothing interesting here\n');
   const graph = graphOf([fileNode('x.txt', 1)]);
 
@@ -251,7 +251,7 @@ test('grepGraph: zero-hit result has the documented shape — empty groups, zero
 });
 
 test('grepGraph: unreadable file is skipped and counted into truncated.files, not silently ignored', () => {
-  const d = mkdtempSync(join(tmpdir(), 'graft-grep-unreadable-'));
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-grep-unreadable-'));
   writeFileSync(join(d, 'real.txt'), 'NEEDLE is here\n');
   // 'missing.txt' is indexed in the graph but does not exist on disk.
   const graph = graphOf([fileNode('real.txt', 1), fileNode('missing.txt', 1)]);
@@ -263,7 +263,7 @@ test('grepGraph: unreadable file is skipped and counted into truncated.files, no
 });
 
 test('zeroHitNote (grep-cli.ts): zero hits AND unreadable indexed files mentions the unreadable count, not just the zero-hit note', () => {
-  const d = mkdtempSync(join(tmpdir(), 'graft-grep-zero-unreadable-'));
+  const d = mkdtempSync(join(tmpdir(), 'symgraph-grep-zero-unreadable-'));
   writeFileSync(join(d, 'real.txt'), 'nothing interesting here\n');
   // 'missing.txt' is indexed in the graph but does not exist on disk — the
   // graph is stale (or the root is wrong) relative to what's on disk.

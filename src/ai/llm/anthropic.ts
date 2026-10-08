@@ -4,7 +4,7 @@
  * OpenAI-compatible endpoint.
  *
  * The Messages API differs from Chat Completions in ways this adapter absorbs so
- * the rest of graft never sees them:
+ * the rest of symgraph never sees them:
  *   - `system` is a top-level parameter, not a message.
  *   - tool results ride inside a USER turn, and all results answering one
  *     assistant turn must be coalesced into a single user message.

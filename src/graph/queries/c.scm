@@ -8,6 +8,6 @@
 
 (enum_specifier name: (type_identifier) @name) @definition.type
 
-; graft: call sites (upstream c tags.scm is definition-only)
+; symgraph: call sites (upstream c tags.scm is definition-only)
 (call_expression
   function: (identifier) @name) @reference.call

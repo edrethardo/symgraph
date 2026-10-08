@@ -2,10 +2,10 @@ node_modules/
 dist/
 *.log
 
-# graft's local graph cache — regenerable, not committed. Each dev runs
-# `graft build` locally (it re-adds this line itself), so the folder is a
+# symgraph's local graph cache — regenerable, not committed. Each dev runs
+# `symgraph build` locally (it re-adds this line itself), so the folder is a
 # personal cache like node_modules, never a shared artifact.
-graft/
+symgraph/
 
 # Env
 .env
@@ -17,7 +17,7 @@ graft/
 # Session transcripts and prompt traces — local analysis, not product.
 transcripts/
 
-# Claude Code settings — regenerated per machine by `graft init`, never shared
+# Claude Code settings — regenerated per machine by `symgraph init`, never shared
 # and never part of a PR diff (the hook helpers/skills alongside them stay tracked).
 .claude/settings.json
 .claude/settings.local.json

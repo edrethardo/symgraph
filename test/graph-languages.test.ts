@@ -1,5 +1,5 @@
 /**
- * What graft *calls* the languages it indexed, as distinct from the tree-sitter
+ * What symgraph *calls* the languages it indexed, as distinct from the tree-sitter
  * grammar it used to parse them.
  *
  * The bug (#36): `.mjs` and `.js` are parsed by the typescript grammar and `.jsx` by
@@ -20,7 +20,7 @@ import { buildRepoMap } from "../src/graph/map.js";
 import { languageLabelOf, languageOf } from "../src/graph/extract.js";
 import { readGraph, wiringPath } from "../src/graph/write.js";
 
-/** Every extension graft claims to index, one per grammar/label pairing. */
+/** Every extension symgraph claims to index, one per grammar/label pairing. */
 const INDEXED = [
   "a.ts", "a.mts", "a.cts",
   "a.js", "a.mjs", "a.cjs",
@@ -91,7 +91,7 @@ test("labels are case-insensitive, like the grammar lookup", () => {
 
 test("the build banner and repo map report every language they indexed", async () => {
   // #36's repro, generalized: one file per label, all of them genuinely parsed.
-  const d = mkdtempSync(join(tmpdir(), "graft-langs-"));
+  const d = mkdtempSync(join(tmpdir(), "symgraph-langs-"));
   mkdirSync(join(d, "src"), { recursive: true });
   mkdirSync(join(d, "scripts"), { recursive: true });
   writeFileSync(join(d, "src", "a.ts"), "export function tsOnly(): number {\n  return 1;\n}\n");

@@ -1,5 +1,5 @@
 /**
- * Tests for `graft ask` — specifically the `source` option, which turns the
+ * Tests for `symgraph ask` — specifically the `source` option, which turns the
  * pack from a locator (pointers only) into a retriever (source inlined at each
  * span). The retriever behaviour is what makes ask substitutive: the agent
  * reads the span from the pack instead of opening the file.
@@ -38,7 +38,7 @@ test("isTestPath: recognizes pytest's test_*.py prefix and conftest, even outsid
 });
 
 test("test files rank below the source they exercise for a non-test query, but not for a test-seeking one", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-testrank-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-testrank-"));
   try {
     writeFileSync(
       join(dir, "download.ts"),
@@ -70,7 +70,7 @@ test("test files rank below the source they exercise for a non-test query, but n
 });
 
 test("test de-ranking survives normalization when a test is the strongest lexical match (#37)", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-test-normalization-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-test-normalization-"));
   try {
     writeFileSync(
       join(dir, "selector.ts"),
@@ -99,7 +99,7 @@ test("test de-ranking survives normalization when a test is the strongest lexica
 });
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-"));
   writeFileSync(
     join(dir, "math.ts"),
     `export function addNumbers(a: number, b: number): number {\n` +
@@ -126,7 +126,7 @@ test("ask without source returns pointers but no inlined code", async () => {
 /** Stamp a crux onto the addNumbers node in the fixture's committed wiring.json
  * (fixtures build keyless, so Tier-2 fields ship null). */
 function stampCrux(dir: string, code: string): void {
-  const p = join(dir, "graft", ".graph", "wiring.json");
+  const p = join(dir, "symgraph", ".graph", "wiring.json");
   const g = JSON.parse(readFileSync(p, "utf8"));
   const n = g.nodes.find((n: any) => n.name === "addNumbers");
   n.crux = { code, span: "L2-L2" };
@@ -164,7 +164,7 @@ test("ask --source falls back to the span when a node has no crux", async () => 
 });
 
 test("skeleton lists a file's definitions in span order, matches by basename", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-skel-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-skel-"));
   try {
     writeFileSync(
       join(dir, "api.ts"),
@@ -178,7 +178,7 @@ test("skeleton lists a file's definitions in span order, matches by basename", a
     const byBase = skeleton(dir, "api.ts");
     assert.equal(byBase.file, "api.ts");
     const txt = formatSkeleton(r);
-    assert.match(txt, /graft skeleton — api\.ts/);
+    assert.match(txt, /symgraph skeleton — api\.ts/);
     assert.match(txt, /L\d+-L\d+ {2}function first/);
     assert.match(skeleton(dir, "nope.ts").note ?? "", /no definitions/);
   } finally {
@@ -204,7 +204,7 @@ test("ask reports coverage: 1.0 when every query term hits, low on mostly-off-co
 });
 
 test("ask file-first selection preserves baseline file order and delays sibling spans", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-file-first-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-file-first-"));
   try {
     writeFileSync(
       join(dir, "a.ts"),
@@ -243,7 +243,7 @@ test("ask file-first selection preserves baseline file order and delays sibling 
 });
 
 test("ask bounded file scoring rewards one anchor without moving singleton scores", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-file-complement-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-file-complement-"));
   try {
     writeFileSync(
       join(dir, "a.ts"),
@@ -305,7 +305,7 @@ test("ask bounded file scoring rewards one anchor without moving singleton score
 });
 
 test("default file-aware ranking locks the exact baseline top hit and delays secondary spans", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-a5-lock-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-a5-lock-"));
   try {
     writeFileSync(
       join(dir, "a.ts"),
@@ -318,7 +318,7 @@ test("default file-aware ranking locks the exact baseline top hit and delays sec
     );
     await buildGraph(dir);
     writeFileSync(
-      join(dir, "graft", "a5-concept.md"),
+      join(dir, "symgraph", "a5-concept.md"),
       `---\nslug: a5-concept\nname: Aardvark amber cobalt\nsources:\n  - path: b.ts\n---\n` +
         `Amber cobalt behavior overview.\n`,
     );
@@ -390,7 +390,7 @@ test("default file-aware ranking locks the exact baseline top hit and delays sec
 });
 
 test("bounded file grouping happens before the output limit", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-file-before-limit-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-file-before-limit-"));
   try {
     const crowded = Array.from(
       { length: 45 },
@@ -430,7 +430,7 @@ test("bounded file grouping happens before the output limit", async () => {
 });
 
 test("ask bounded file scoring keeps the source first and preserves the outer test penalty", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-file-complement-tests-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-file-complement-tests-"));
   try {
     writeFileSync(
       join(dir, "download.ts"),
@@ -468,7 +468,7 @@ test("ask bounded file scoring keeps the source first and preserves the outer te
 });
 
 test("ask finds a symbol by a term that appears only in its body (body-indexing)", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-body-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-body-"));
   try {
     // "stripe" is nowhere in the name/signature — only inside the body.
     writeFileSync(
@@ -489,7 +489,7 @@ test("ask finds a symbol by a term that appears only in its body (body-indexing)
 });
 
 test("ask surfaces a file by a term only in its module-level code (file-body indexing)", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-file-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-file-"));
   try {
     // "telemetry" appears only in a module-level constant — inside no function
     // or class — so only file-level residual indexing can make it findable.
@@ -509,7 +509,7 @@ test("ask surfaces a file by a term only in its module-level code (file-body ind
 });
 
 test("ask indexes a symbol past the 32KB tree-sitter boundary (chunked parse)", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-big-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-big-"));
   try {
     // Build a >32KB Python file with the distinctive symbol AFTER the 32KB mark,
     // so it is only reachable if the whole file parsed (string parse caps at 32KB).
@@ -536,7 +536,7 @@ test("ask indexes a symbol past the 32KB tree-sitter boundary (chunked parse)", 
  * edges. Same shapes the traversal-core fixture (test/graph-traverse.test.ts)
  * uses for the qualified-name bug class. */
 function qualifiedFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-qualified-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-qualified-"));
   writeFileSync(
     join(dir, "cache.ts"),
     `export class Cache {\n` +
@@ -579,7 +579,7 @@ test("ask: structural subject resolves but has zero edges — falls through to l
     assert.equal(r.mode, "lexical", "never a bare empty structural result");
     assert.ok(r.note, "a fallthrough note must be set");
     assert.match(r.note!, /structural index: no entries for 'unusedHelper'/);
-    assert.match(r.note!, /graft callers 'unusedHelper'/);
+    assert.match(r.note!, /symgraph callers 'unusedHelper'/);
     assert.ok(r.hits.length > 0, "lexical fallback still finds the function by name");
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -606,8 +606,8 @@ test("formatAsk: the structural fallthrough note prints prominently, before any 
     const r = ask(dir, "who calls unusedHelper");
     const out = formatAsk(r);
     // Marker first (it must survive `head -N`), then the report header.
-    assert.ok(out.startsWith("[graft] answered from the index"), "marker is the first line");
-    assert.match(out, /^\[graft\][^\n]*\n\ngraft ask —/, "report header follows the marker");
+    assert.ok(out.startsWith("[symgraph] answered from the index"), "marker is the first line");
+    assert.match(out, /^\[symgraph\][^\n]*\n\nsymgraph ask —/, "report header follows the marker");
     const noteIdx = out.indexOf("⚠ structural index: no entries");
     assert.ok(noteIdx > 0, "the note is rendered");
     const firstHitIdx = out.search(/\n1\.\s/); // lexical hit numbering starts at "1. "
@@ -625,7 +625,7 @@ test("formatAsk: the structural fallthrough note prints prominently, before any 
  * "how are errors handled" query matches in BOTH scopes. Without fusion the
  * backend's sheer size drowns the frontend's hits. */
 function multiScopeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-scopes-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-scopes-"));
   mkdirSync(join(dir, "frontend", "src"), { recursive: true });
   mkdirSync(join(dir, "backend"), { recursive: true });
   writeFileSync(join(dir, "frontend", "package.json"), "{}\n");
@@ -810,7 +810,7 @@ test("file-aware ranking keeps the exact multi-scope baseline top before queue p
  * post-fix, the match-STRENGTH gate (same as `federateAsk`) correctly excludes
  * it regardless of the raw ratio. */
 function crossSeamMonorepoFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-crossseam-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-crossseam-"));
   mkdirSync(join(dir, "api"), { recursive: true });
   mkdirSync(join(dir, "junk"), { recursive: true });
   writeFileSync(join(dir, "api", "package.json"), `{ "name": "api", "version": "1.0.0" }\n`);
@@ -881,7 +881,7 @@ test("cross-seam fix: a monorepo scope with only a body-comment collision is gat
  * would wrongly let "prefix" match "prefix-sibling" too; segment-aware
  * matching (same rule as `scopeOf`) must not. */
 function siblingPrefixFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-in-sibling-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-in-sibling-"));
   mkdirSync(join(dir, "widgets"), { recursive: true });
   mkdirSync(join(dir, "widgets-extra"), { recursive: true });
   writeFileSync(join(dir, "widgets", "a.ts"), `export function needlefind(): number {\n  return 1;\n}\n`);
@@ -915,7 +915,7 @@ test("ask --in: filters to nodes under the prefix, segment-aware ('widgets' must
  * between the unfiltered and `--in`-filtered corpora — proof `--in` recomputes
  * idf over the filtered set rather than reusing the global one. */
 function idfShiftFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-in-idf-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-in-idf-"));
   mkdirSync(join(dir, "filler"), { recursive: true });
   mkdirSync(join(dir, "proj"), { recursive: true });
   for (let i = 0; i < 30; i++) {
@@ -982,7 +982,7 @@ test("ask --in: unknown prefix on a single-scope repo throws without a scopes-he
   }
 });
 
-test("CLI: `graft ask --in <unknown>` exits 1 with the scope-enumerating error on stderr", async () => {
+test("CLI: `symgraph ask --in <unknown>` exits 1 with the scope-enumerating error on stderr", async () => {
   const dir = multiScopeFixture();
   try {
     await buildGraph(dir);
@@ -1048,7 +1048,7 @@ test("ask --in on the multi-scope fixture: filtering to one scope carries no sco
  * node's body bag, making a body-only term unfindable everywhere, including
  * under its own directory. */
 test("ask --in: a body-only term is still found when filtered to its own directory (sidecar body bags must survive --in)", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-in-body-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-in-body-"));
   try {
     mkdirSync(join(dir, "widgets"), { recursive: true });
     writeFileSync(
@@ -1100,7 +1100,7 @@ test("ask --in: a trailing slash is accepted — `--in frontend/` behaves exactl
  * one under the prefix (same "narrow resolveSymbol" semantics
  * `callers`/`callees`/`impact --in` already have), not just filter docs. */
 function duplicateNameFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-ask-in-structural-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-ask-in-structural-"));
   mkdirSync(join(dir, "frontend"), { recursive: true });
   mkdirSync(join(dir, "backend"), { recursive: true });
   writeFileSync(
@@ -1165,7 +1165,7 @@ test("regression pin: single-scope ask output is byte-equal with canonical meta.
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const p = join(dir, "graft", ".graph", "wiring.json");
+    const p = join(dir, "symgraph", ".graph", "wiring.json");
     const g = JSON.parse(readFileSync(p, "utf8"));
     delete g.meta.scopes;
     writeFileSync(p, JSON.stringify(g));

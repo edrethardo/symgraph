@@ -3,7 +3,7 @@
  * file in a context dir (frontmatter = node + edges) and produces a single
  * `{meta, nodes, edges}` document the viewer can render directly.
  *
- * Design rules (see docs/superpowers/specs/2026-07-15-graft-viz-design.md):
+ * Design rules (see docs/superpowers/specs/2026-07-15-symgraph-viz-design.md):
  *  - relations are normalized into the closed verb vocabulary — vague LLM
  *    softeners map to the concrete verb they usually mean
  *  - edges whose target slug doesn't exist are dropped (LLM output can dangle)

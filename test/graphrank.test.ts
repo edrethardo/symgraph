@@ -1,5 +1,5 @@
 /**
- * Tests for the graph-rank re-ranking stage of `graft ask`.
+ * Tests for the graph-rank re-ranking stage of `symgraph ask`.
  *
  * The unit tests exercise {@link personalizedPageRank} directly on hand-built
  * graphs; the integration tests drive the whole `ask` path on real fixtures
@@ -249,7 +249,7 @@ test("PageRank: preparing many partitions reads graph topology only once", () =>
 /** A fixture with a same-word collision: `fooHandler` (wired to two helpers)
  * and `fooWidget` (isolated) both match the token "foo" equally. */
 function makeCollisionFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-graphrank-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-graphrank-"));
   writeFileSync(
     join(dir, "connected.ts"),
     `export function fooHandler() {\n  helperAlpha();\n  helperBeta();\n}\n` +

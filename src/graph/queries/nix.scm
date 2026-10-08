@@ -1,5 +1,5 @@
 ; Nix tags — standard tree-sitter tags convention (@definition.<kind> + @name + @reference.call).
-; Based on upstream tree-sitter-nix queries, extended for graft's breadth tier.
+; Based on upstream tree-sitter-nix queries, extended for symgraph's breadth tier.
 ;
 ; Note: `binding` inside `let_expression` cannot have its children matched in
 ; tree-sitter queries (parse error), so let-bound variables are NOT captured as

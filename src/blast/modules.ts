@@ -4,7 +4,7 @@
  * file paths.
  *
  * Two sources, best first:
- *   1. the deep tier's concept nodes (`graft/*.md`), whose frontmatter lists the
+ *   1. the deep tier's concept nodes (`symgraph/*.md`), whose frontmatter lists the
  *      source files each concept was synthesized from. This is why `blast` is
  *      worth running on a `build --deep` graph: the grouping is the product.
  *   2. the file's directory, when no concept claims it (a breadth-tier graph, or
@@ -68,7 +68,7 @@ const CLAUSE_BREAK = /\s(?:\(|—|-\s)|:\s|\s(?:via|and|for|with|using|in|across
  *
  * Concept names are written for a reader with the whole file in front of them, so
  * they run long and some carry a `Concept: ` prefix from the synthesis prompt.
- * "Reciprocal-Rank Fusion for Workspace Federation" is a fine node title in `graft
+ * "Reciprocal-Rank Fusion for Workspace Federation" is a fine node title in `symgraph
  * viz` and unreadable inside a circle.
  */
 export function shortLabel(label: string): string {

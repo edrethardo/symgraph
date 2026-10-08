@@ -24,24 +24,24 @@ const MATH = "export function add(a: number, b: number): number {\n  return a + 
 const MUL = "export function mul(a: number, b: number): number {\n  return a * b;\n}\n";
 
 function repo(): string {
-  const d = mkdtempSync(join(tmpdir(), "graft-refresh-"));
+  const d = mkdtempSync(join(tmpdir(), "symgraph-refresh-"));
   mkdirSync(join(d, "src"), { recursive: true });
   writeFileSync(join(d, "src", "math.ts"), MATH);
   return d;
 }
 
-const outOf = (d: string): string => join(d, "graft");
+const outOf = (d: string): string => join(d, "symgraph");
 const graphOf = (d: string): GraphV1 => readGraph(wiringPath(outOf(d))) as GraphV1;
 const hasSymbol = (d: string, id: string): boolean => graphOf(d).nodes.some((n) => n.id === id);
 
 /** Each test owns the env switch; `graph-load.test.ts` sets it process-wide for
  * its own file, and these run in a separate process. */
 function withRefreshDisabled<T>(fn: () => T): T {
-  process.env.GRAFT_NO_REFRESH = "1";
+  process.env.SYMGRAPH_NO_REFRESH = "1";
   try {
     return fn();
   } finally {
-    delete process.env.GRAFT_NO_REFRESH;
+    delete process.env.SYMGRAPH_NO_REFRESH;
   }
 }
 
@@ -80,7 +80,7 @@ test("ensureFreshGraph picks up an uncommitted edit before the query sees the gr
   assert.equal(r.refreshed, true);
   assert.deepEqual(r.drift?.changed, ["src/math.ts"]);
   assert.equal(hasSymbol(d, "src/math.ts#mul"), true);
-  assert.match(refreshNote(r) ?? "", /^\[graft\] refreshed the graph \(1 file changed\)/);
+  assert.match(refreshNote(r) ?? "", /^\[symgraph\] refreshed the graph \(1 file changed\)/);
 });
 
 test("ensureFreshGraph is a no-op on a clean tree", async () => {
@@ -113,7 +113,7 @@ test("ensureFreshGraph does nothing when there is no graph at all", async () => 
   assert.equal(probeDrift(d, outOf(d)), null, "and it did not build one behind the user's back");
 });
 
-test("GRAFT_NO_REFRESH and { disabled } both short-circuit", async () => {
+test("SYMGRAPH_NO_REFRESH and { disabled } both short-circuit", async () => {
   const d = repo();
   await buildGraph(d);
   writeFileSync(join(d, "src", "math.ts"), `${MATH}export const X = 1;\n`);
@@ -146,10 +146,10 @@ test("a rebuild already in flight is waited out, then reported — never a hang"
 
 /**
  * The gate must leave `stats.json` completely alone, and this is load-bearing rather
- * than merely tidy. `handleStop` only spawns the end-of-turn `graft build` when
+ * than merely tidy. `handleStop` only spawns the end-of-turn `symgraph build` when
  * `stats.dirty` is set. A refresh writes the graph but deliberately not the markdown
  * projections, so if it cleared `dirty` — which is exactly what "flip the statusline
- * to ✓ synced mid-turn" would mean — the one thing that rebuilds `graft/`'s cards
+ * to ✓ synced mid-turn" would mean — the one thing that rebuilds `symgraph/`'s cards
  * and INDEX.md would stop running, and the passive surface an agent greps would
  * never catch up.
  */
@@ -198,7 +198,7 @@ test("a failed rebuild still answers from the graph on disk", async (t) => {
   assert.equal(r.refreshed, false);
   assert.match(r.note ?? "", /refresh skipped/);
   assert.equal(readFileSync(wiringPath(outOf(d)), "utf8"), before, "the old graph is intact");
-  assert.match(refreshNote(r) ?? "", /^\[graft\] graph refresh skipped/);
+  assert.match(refreshNote(r) ?? "", /^\[symgraph\] graph refresh skipped/);
 
   // The lock must have been released, or every later query would report a
   // rebuild-in-flight that will never finish.
@@ -211,7 +211,7 @@ test("a failed rebuild still answers from the graph on disk", async (t) => {
  * directions. Each of the next three tests is a case where they didn't, and the
  * graph went permanently stale while every surface reported healthy.
  */
-test("GRAFT_REFRESH=hash: drift the probe reports is drift the rebuild repairs", async () => {
+test("SYMGRAPH_REFRESH=hash: drift the probe reports is drift the rebuild repairs", async () => {
   const d = repo();
   await buildGraph(d);
   const f = join(d, "src", "math.ts");
@@ -236,7 +236,7 @@ test("GRAFT_REFRESH=hash: drift the probe reports is drift the rebuild repairs",
   // whole reason the flag exists.
   assert.ok(isClean(probeDrift(d, outOf(d))!));
 
-  process.env.GRAFT_REFRESH = "hash";
+  process.env.SYMGRAPH_REFRESH = "hash";
   try {
     assert.deepEqual(probeDrift(d, outOf(d)), { changed: ["src/math.ts"], added: [], removed: [] });
     const r = await ensureFreshGraph(d);
@@ -247,7 +247,7 @@ test("GRAFT_REFRESH=hash: drift the probe reports is drift the rebuild repairs",
     assert.equal(hasSymbol(d, "src/math.ts#add"), false);
     assert.ok(isClean(probeDrift(d, outOf(d))!), "and the drift is now gone, not permanent");
   } finally {
-    delete process.env.GRAFT_REFRESH;
+    delete process.env.SYMGRAPH_REFRESH;
   }
 });
 
@@ -312,7 +312,7 @@ test("an unwritable cache costs reuse, not correctness", async (t) => {
 /**
  * The query path writes the graph, the ask sidecar and the fingerprint — and stops.
  * Cards and INDEX.md are what a human reads and what the agent greps; they are
- * rebuilt by an explicit `graft build`, which is what the `Stop` hook runs at the
+ * rebuilt by an explicit `symgraph build`, which is what the `Stop` hook runs at the
  * end of a turn. Keeping them off the query path is what makes a refresh cheap, and
  * it means a read-only card or an unparseable hand-written concept node can never be
  * reached — let alone made permanent — by a retrieval call.
@@ -346,9 +346,9 @@ test("a refresh never writes the repo's .gitignore", async () => {
   const d = repo();
   await buildGraph(d); // an explicit build DOES self-ignore — that part is unchanged
   const ignore = join(d, ".gitignore");
-  assert.match(readFileSync(ignore, "utf8"), /graft\//);
+  assert.match(readFileSync(ignore, "utf8"), /symgraph\//);
 
-  // A repo that excludes graft/ some other way (.git/info/exclude, a global
+  // A repo that excludes symgraph/ some other way (.git/info/exclude, a global
   // core.excludesfile) and deliberately has no line here. A query is a read; it must
   // not hand the user an unexplained modification to a tracked file.
   rmSync(ignore);
@@ -390,7 +390,7 @@ test("a fingerprint from a different extractor is not trusted", async () => {
 });
 
 test("a workspace refreshes its children even under a --dir override", async () => {
-  const d = mkdtempSync(join(tmpdir(), "graft-refresh-ws-"));
+  const d = mkdtempSync(join(tmpdir(), "symgraph-refresh-ws-"));
   const child = join(d, "api");
   mkdirSync(join(child, "src"), { recursive: true });
   writeFileSync(join(child, "src", "math.ts"), MATH);
@@ -410,25 +410,25 @@ test("a workspace refreshes its children even under a --dir override", async () 
   assert.equal(hasSymbol(child, "src/math.ts#mul"), true);
 });
 
-test("callTool refreshes before answering — except for graft_check_freshness", async () => {
+test("callTool refreshes before answering — except for symgraph_check_freshness", async () => {
   const d = repo();
   await buildGraph(d);
   writeFileSync(join(d, "src", "math.ts"), `${MATH}export function mul(a: number, b: number): number {\n  return a * b;\n}\n`);
 
-  // graft_check_freshness is the drift report: refreshing first would make it always say OK.
-  const check = await callTool(d, "graft_check_freshness", {});
+  // symgraph_check_freshness is the drift report: refreshing first would make it always say OK.
+  const check = await callTool(d, "symgraph_check_freshness", {});
   assert.equal(check.isError, false);
-  assert.ok(!check.text.startsWith("[graft] refreshed"));
+  assert.ok(!check.text.startsWith("[symgraph] refreshed"));
   assert.equal(hasSymbol(d, "src/math.ts#mul"), false, "check must not rebuild");
 
-  const ask = await callTool(d, "graft_find_code", { query: "multiply two numbers" });
+  const ask = await callTool(d, "symgraph_find_code", { query: "multiply two numbers" });
   assert.equal(ask.isError, false);
-  assert.match(ask.text, /^\[graft\] refreshed the graph/);
+  assert.match(ask.text, /^\[symgraph\] refreshed the graph/);
   assert.equal(hasSymbol(d, "src/math.ts#mul"), true);
   assert.match(ask.text, /mul/, "and the answer knows about the symbol that was never committed");
 
-  const again = await callTool(d, "graft_find_code", { query: "multiply two numbers" });
-  assert.ok(!again.text.startsWith("[graft] refreshed"), "nothing moved — no note, no rebuild");
+  const again = await callTool(d, "symgraph_find_code", { query: "multiply two numbers" });
+  assert.ok(!again.text.startsWith("[symgraph] refreshed"), "nothing moved — no note, no rebuild");
 });
 
 test("a process killed while holding the lock releases it", async (t) => {
@@ -444,7 +444,7 @@ test("a process killed while holding the lock releases it", async (t) => {
   const lock = join(cache, ".sync.lock");
 
   // `execFileSync(..., { timeout })` — which is how the Claude Code prompt hook runs
-  // `graft ask` — enforces its timeout with SIGTERM, and node's default disposition
+  // `symgraph ask` — enforces its timeout with SIGTERM, and node's default disposition
   // for that is to exit without unwinding. So the `finally` that releases the lock
   // never ran, and the abandoned lock then blocked the background sync and made every
   // query wait-then-answer-stale until it aged out.

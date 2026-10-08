@@ -1,12 +1,12 @@
 /**
  * A5 (V4) — a workspace build's `--include-dir` must reach the children.
  *
- * `runWorkspaceBuild` builds each child through its own `Graft` engine
+ * `runWorkspaceBuild` builds each child through its own `Symgraph` engine
  * (`workspace-cli.ts`), then `splitWorkspace` replaces the PARENT's generated
- * `graft/` with `workspace.json`.
+ * `symgraph/` with `workspace.json`.
  * Without threading the CLI's `--include-dir` value into
  * `runWorkspaceBuild`/`buildChild`, a workspace build had no way to see it —
- * children are independent repos with their own graft state, so the fix
+ * children are independent repos with their own symgraph state, so the fix
  * persists the include list in EACH CHILD's own state too.
  */
 import { test } from "node:test";
@@ -32,7 +32,7 @@ function workspaceWithBuildDirs(): string {
 }
 
 function graphOf(childDir: string): GraphV1 | null {
-  return readGraph(wiringPath(join(childDir, "graft")));
+  return readGraph(wiringPath(join(childDir, "symgraph")));
 }
 
 test("A5: --include-dir on a workspace build reaches every child, which persists it for a later no-flag rebuild", async () => {
@@ -97,9 +97,9 @@ test("A5: a skipped-name workspace child remains discoverable on a later no-flag
     await runWorkspaceBuild(parent, { deep: false, childConfig: {}, includeDirs: ["build"] });
     await runWorkspaceBuild(parent, { deep: false, childConfig: {} });
 
-    const workspace = JSON.parse(readFileSync(join(parent, "graft", "workspace.json"), "utf8")) as { children: string[] };
+    const workspace = JSON.parse(readFileSync(join(parent, "symgraph", "workspace.json"), "utf8")) as { children: string[] };
     assert.deepEqual(workspace.children, ["app", "build"]);
-    assert.equal(readFileSync(join(parent, ".graft", "config.json"), "utf8").includes("build"), true);
+    assert.equal(readFileSync(join(parent, ".symgraph", "config.json"), "utf8").includes("build"), true);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }

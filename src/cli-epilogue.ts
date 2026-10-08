@@ -1,23 +1,23 @@
 /**
- * `graft init`'s closing epilogue: the ASCII wordmark + numbered next steps,
+ * `symgraph init`'s closing epilogue: the ASCII wordmark + numbered next steps,
  * printed to stderr after the per-file ✓/·/⚠ lines. Extracted out of cli.ts
  * so the exact text — spacing is hand-aligned, not incidental — can be
  * unit-tested without spawning the CLI.
  */
 
-// The widest line (index 4, tied with index 2 at 26 chars) gets the live
+// The widest line (index 4, tied with index 3 at 50 chars) gets the live
 // node/edge stats appended, when a graph exists.
 const WORDMARK_LINES = [
-  "                   __ _",
-  "   __ _ _ __ __ _ / _| |_",
-  "  / _` | '__/ _` | |_| __|",
-  " | (_| | | | (_| |  _| |_",
-  "  \\__, |_|  \\__,_|_|  \\__|",
-  "  |___/",
+  "                                            _",
+  "  ___ _   _ _ __ ___   __ _ _ __ __ _ _ __ | |__",
+  " / __| | | | '_ ` _ \\ / _` | '__/ _` | '_ \\| '_ \\",
+  " \\__ \\ |_| | | | | | | (_| | | | (_| | |_) | | | |",
+  " |___/\\__, |_| |_| |_|\\__, |_|  \\__,_| .__/|_| |_|",
+  "      |___/           |___/          |_|",
 ];
 const STATS_LINE_INDEX = 4;
 
-// Nanonets indigo, and a muted grey for the secondary stats suffix — only
+// Indigo, and a muted grey for the secondary stats suffix — only
 // applied when stderr is a real TTY (tests spawn/call this without one, so
 // existing plain-text assertions keep passing).
 const indigo = (s: string) => `\x1b[38;2;84;111;255m${s}\x1b[0m`;
@@ -31,7 +31,7 @@ interface Step {
 }
 
 export interface InitEpilogueOptions {
-  /** Whether a graft graph exists on disk (built by this run, or a prior one). */
+  /** Whether a symgraph graph exists on disk (built by this run, or a prior one). */
   graphBuilt: boolean;
   /** Node count from the built graph — only meaningful when `graphBuilt`. */
   nodes?: number;
@@ -39,7 +39,7 @@ export interface InitEpilogueOptions {
   edges?: number;
 }
 
-/** Renders the `graft init` next-steps epilogue (no trailing newline — the
+/** Renders the `symgraph init` next-steps epilogue (no trailing newline — the
  * caller's `console.error` adds the one trailing newline). */
 export function formatInitEpilogue(opts: InitEpilogueOptions): string {
   const { graphBuilt, nodes, edges } = opts;
@@ -52,8 +52,8 @@ export function formatInitEpilogue(opts: InitEpilogueOptions): string {
   }
 
   const steps: Step[] = [
-    ...(graphBuilt ? [] : [{ label: "build the graph", command: "graft build" }]),
-    { label: "restart your agent", command: "a new session picks up graft automatically" },
+    ...(graphBuilt ? [] : [{ label: "build the graph", command: "symgraph build" }]),
+    { label: "restart your agent", command: "a new session picks up symgraph automatically" },
     {
       label: "code as usual",
       command: "ask your agent to fix a bug or explain a flow —",
@@ -61,7 +61,7 @@ export function formatInitEpilogue(opts: InitEpilogueOptions): string {
     },
     {
       label: "explore by hand",
-      command: 'graft ask "where is auth handled?" · graft callers <fn> · graft viz',
+      command: 'symgraph ask "where is auth handled?" · symgraph callers <fn> · symgraph viz',
     },
   ];
 
@@ -79,7 +79,7 @@ export function formatInitEpilogue(opts: InitEpilogueOptions): string {
     }
   });
 
-  const closing = `${indent}share it: git add .claude && git commit — teammates run \`graft build\` for their own local graph`;
+  const closing = `${indent}share it: git add .claude && git commit — teammates run \`symgraph build\` for their own local graph`;
 
   return [...wordmark, "", ...stepLines, "", closing].join("\n");
 }

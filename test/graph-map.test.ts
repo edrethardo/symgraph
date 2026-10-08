@@ -1,5 +1,5 @@
 /**
- * Tests for `graft map`'s pure core: {@link buildRepoMap} + {@link formatRepoMap}.
+ * Tests for `symgraph map`'s pure core: {@link buildRepoMap} + {@link formatRepoMap}.
  *
  * All fixtures are hand-built `GraphV1` graphs (no real repo, no `buildGraph`)
  * — same `nodeStub`/`graphOf` pattern as test/graphrank.test.ts, extended
@@ -442,7 +442,7 @@ test("formatRepoMap: stays under the 6000-char budget and surfaces hub names", (
   const text = formatRepoMap(map);
 
   assert.ok(text.length <= 6000, `formatted map is ${text.length} chars, expected <= 6000`);
-  assert.match(text, /^\[graft\] answered from the index[^\n]*\n\nrepo map — \d+ files · \d+ symbols · \d+ edges/);
+  assert.match(text, /^\[symgraph\] answered from the index[^\n]*\n\nrepo map — \d+ files · \d+ symbols · \d+ edges/);
   for (const d of map.dirs) {
     for (const h of d.hubs) {
       assert.ok(text.includes(h.name), `hub name "${h.name}" must appear in the rendered map`);

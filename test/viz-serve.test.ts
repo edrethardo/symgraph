@@ -11,7 +11,7 @@ import { createServer } from "node:http";
 import { startVizServer } from "../src/viz/serve.js";
 
 function makeDirs(): { contextDir: string; viewerDir: string; root: string } {
-  const root = mkdtempSync(join(tmpdir(), "graftviz-srv-"));
+  const root = mkdtempSync(join(tmpdir(), "symgraphviz-srv-"));
   const contextDir = join(root, ".context");
   const viewerDir = join(root, "viewer");
   mkdirSync(contextDir);
@@ -42,7 +42,7 @@ test("viz server serves viewer, context graph, and gates code graph", async () =
     const missing = await fetch(`${srv.url}/api/code-graph`);
     assert.equal(missing.status, 404);
     const body = await missing.json();
-    assert.match(body.error, /graft build/);
+    assert.match(body.error, /symgraph build/);
 
     // valid wiring graph → passthrough
     mkdirSync(join(contextDir, ".graph"), { recursive: true });

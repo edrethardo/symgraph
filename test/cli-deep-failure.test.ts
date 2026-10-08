@@ -1,5 +1,5 @@
 /**
- * #127, at the process boundary: `graft build --deep` against a provider that
+ * #127, at the process boundary: `symgraph build --deep` against a provider that
  * rejects every call must EXIT NON-ZERO and say the meaning tier is incomplete.
  *
  * The reported case was an 884-file repo behind a gateway with a hard token quota:
@@ -71,7 +71,7 @@ async function runBuild(
     {
       // No transport retries: the SDK's backoff is correct behaviour but would make
       // this test spend seconds waiting to learn what the first response already said.
-      env: { ...process.env, GRAFT_LLM_RETRIES: "0" },
+      env: { ...process.env, SYMGRAPH_LLM_RETRIES: "0" },
     },
   );
   let stdout = "";
@@ -94,7 +94,7 @@ test("#127: a quota-exhausted --deep build exits 1 and says the meaning tier is 
     // Nothing summarized at all: the denominator is every node in the graph (file
     // nodes carry a summary too), so it is matched loosely on purpose.
     assert.match(r.stderr, /meaning coverage: 0\/\d+ symbols \(0%\)/);
-    assert.match(r.stderr, /re-run `graft build --deep` to resume/);
+    assert.match(r.stderr, /re-run `symgraph build --deep` to resume/);
     // The structural tier still succeeded and is still written — this is a loud
     // warning about a degraded tier, not a rolled-back build.
     assert.match(r.stdout, /✓ wiring: /);

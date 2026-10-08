@@ -1,6 +1,6 @@
 /**
  * The session-start hook's self-maintenance pass, end to end: it must refresh
- * wiring an older graft wrote, surface a cached upgrade nudge, and — critically —
+ * wiring an older symgraph wrote, surface a cached upgrade nudge, and — critically —
  * never touch the network, because it runs inside Claude Code's hook timeout.
  */
 import { test } from 'node:test';
@@ -11,12 +11,12 @@ import { main } from '../src/claude/hooks.js';
 import { readStamp, runningVersion, updateCachePath } from '../src/upkeep.js';
 import { tmpRepo } from './helpers.js';
 
-/** A repo that looks like a previous `graft init` ran here, with no stamp — i.e.
- * wired by a graft old enough not to have written one. */
+/** A repo that looks like a previous `symgraph init` ran here, with no stamp — i.e.
+ * wired by a symgraph old enough not to have written one. */
 function wiredRepo(tag: string): string {
   const repo = tmpRepo(tag);
   mkdirSync(join(repo, '.claude', 'helpers'), { recursive: true });
-  writeFileSync(join(repo, '.claude', 'helpers', 'graft-hooks.cjs'), '// wired by an old graft\n');
+  writeFileSync(join(repo, '.claude', 'helpers', 'symgraph-hooks.cjs'), '// wired by an old symgraph\n');
   return repo;
 }
 
@@ -24,7 +24,7 @@ function wiredRepo(tag: string): string {
 function homeWithCache(tag: string, latest: string | null, ageMs = 0): string {
   const home = tmpRepo(tag);
   writeFileSync(
-    (mkdirSync(join(home, '.graft'), { recursive: true }), updateCachePath(home)),
+    (mkdirSync(join(home, '.symgraph'), { recursive: true }), updateCachePath(home)),
     JSON.stringify({ latest, checkedAt: Date.now() - ageMs }),
   );
   return home;
@@ -34,14 +34,14 @@ function homeWithCache(tag: string, latest: string | null, ageMs = 0): string {
 async function runHook(event: string, repo: string, home: string): Promise<string> {
   const saved = {
     write: process.stdout.write,
-    stdin: process.env.GRAFT_TEST_STDIN,
+    stdin: process.env.SYMGRAPH_TEST_STDIN,
     home: process.env.HOME,
     profile: process.env.USERPROFILE,
     dir: process.env.CLAUDE_PROJECT_DIR,
   };
   let out = '';
   process.stdout.write = ((chunk: string) => { out += chunk; return true; }) as typeof process.stdout.write;
-  process.env.GRAFT_TEST_STDIN = JSON.stringify({ cwd: repo, session_id: 'test' });
+  process.env.SYMGRAPH_TEST_STDIN = JSON.stringify({ cwd: repo, session_id: 'test' });
   process.env.HOME = home;
   process.env.USERPROFILE = home;
   process.env.CLAUDE_PROJECT_DIR = repo;
@@ -49,7 +49,7 @@ async function runHook(event: string, repo: string, home: string): Promise<strin
     await main(event);
   } finally {
     process.stdout.write = saved.write;
-    if (saved.stdin === undefined) delete process.env.GRAFT_TEST_STDIN; else process.env.GRAFT_TEST_STDIN = saved.stdin;
+    if (saved.stdin === undefined) delete process.env.SYMGRAPH_TEST_STDIN; else process.env.SYMGRAPH_TEST_STDIN = saved.stdin;
     if (saved.home === undefined) delete process.env.HOME; else process.env.HOME = saved.home;
     if (saved.profile === undefined) delete process.env.USERPROFILE; else process.env.USERPROFILE = saved.profile;
     if (saved.dir === undefined) delete process.env.CLAUDE_PROJECT_DIR; else process.env.CLAUDE_PROJECT_DIR = saved.dir;
@@ -70,7 +70,7 @@ test('session-start refreshes stale wiring and stamps it', async () => {
   assert.match(ctx, /written by unwired, now /);
   // The wiring was actually re-written, not just announced.
   assert.ok(existsSync(join(repo, '.claude', 'settings.json')));
-  assert.ok(existsSync(join(repo, '.claude', 'skills', 'graft', 'SKILL.md')));
+  assert.ok(existsSync(join(repo, '.claude', 'skills', 'symgraph', 'SKILL.md')));
   assert.equal(readStamp(repo)?.version, runningVersion());
   assert.deepEqual(readStamp(repo)?.hosts, ['claude']);
 });
@@ -86,8 +86,8 @@ test('session-start says nothing on a second run — the stamp now matches', asy
 test('session-start surfaces a cached upgrade nudge', async () => {
   const repo = wiredRepo('hook-nudge');
   const ctx = contextOf(await runHook('session-start', repo, homeWithCache('hook-nudge-home', '99.0.0')));
-  assert.match(ctx, /graft .* → 99\.0\.0 available/);
-  assert.match(ctx, /npm i -g @nanonets\/graft@latest/);
+  assert.match(ctx, /symgraph .* → 99\.0\.0 available/);
+  assert.match(ctx, /npm i -g symgraph@latest/);
 });
 
 test('an up-to-date install gets no nudge', async () => {

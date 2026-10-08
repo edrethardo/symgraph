@@ -95,7 +95,7 @@ test("cross-language: families that really do interoperate still resolve", () =>
 });
 
 test("cross-language: an unclaimed extension never filters", () => {
-  // Absence of data is not evidence of a mismatch. If graft cannot name the
+  // Absence of data is not evidence of a mismatch. If symgraph cannot name the
   // language of a file, the old behaviour has to stand or the graph silently
   // loses real edges for anything outside the extension tables.
   const nodes = [

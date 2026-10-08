@@ -1,10 +1,10 @@
 /**
- * Opt-in LSP enrichment (`graft build --lsp`): add compiler-grade call edges the
+ * Opt-in LSP enrichment (`symgraph build --lsp`): add compiler-grade call edges the
  * AST resolver couldn't — chiefly member calls (`obj.foo()`) whose receiver type
- * graft can't infer, and every call in the generic breadth tier (which has no
+ * symgraph can't infer, and every call in the generic breadth tier (which has no
  * receiver typing at all). For each function/method node we ask the language
  * server for its outgoing calls (call hierarchy) and map each callee's definition
- * back to a graft node, adding a `calls` edge stamped `lsp_resolved`. Precision is
+ * back to a symgraph node, adding a `calls` edge stamped `lsp_resolved`. Precision is
  * the server's (compiler-grade), so this closes the edge-recall gap WITHOUT the
  * name-guessing that halved precision (see resolve.ts). Best-effort: no server /
  * a timeout / an error → the graph is returned unchanged.

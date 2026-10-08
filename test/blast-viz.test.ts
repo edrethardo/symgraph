@@ -123,7 +123,7 @@ test("blast viz: a changed node shows its hunk, split by symbol", () => {
 });
 
 test("blast viz: an affected node quotes the line that reaches the diff", () => {
-  const root = mkdtempSync(join(tmpdir(), "graft-blast-ev-"));
+  const root = mkdtempSync(join(tmpdir(), "symgraph-blast-ev-"));
   mkdirSync(join(root, "src"), { recursive: true });
   // s0's span is L1-L3, and line 2 is the call that put it in the radius.
   writeFileSync(
@@ -145,7 +145,7 @@ test("blast viz: an affected node quotes the line that reaches the diff", () => 
 });
 
 test("blast viz: a file-level dependent is quoted at its import, not at its doc comment", () => {
-  const root = mkdtempSync(join(tmpdir(), "graft-blast-imp-"));
+  const root = mkdtempSync(join(tmpdir(), "symgraph-blast-imp-"));
   // A whole-file node: nothing in it names a changed SYMBOL, and its first line is
   // a doc comment — quoting that spent a code block to say nothing.
   writeFileSync(
@@ -164,7 +164,7 @@ test("blast viz: a file-level dependent is quoted at its import, not at its doc 
 
   // And with nothing to point at, no block at all rather than a `/**`.
   writeFileSync(join(root, "Query Freshness Gatedep.ts"), "/**\n * A module.\n */\nconst x = 1;\n");
-  const quiet = blastVizGraph(r, { root: mkdtempSync(join(tmpdir(), "graft-empty-")) });
+  const quiet = blastVizGraph(r, { root: mkdtempSync(join(tmpdir(), "symgraph-empty-")) });
   assert.equal(quiet.nodes.find((n) => n.type === "affected")?.evidence, undefined);
 });
 
@@ -194,11 +194,11 @@ test("blast viz: the page is titled after the repository, not the checkout direc
   assert.equal(repoLabel(dir), basename(dir), "no remote: the directory name is all there is");
 
   execFileSync("git", ["-C", dir, "init", "-q"]);
-  execFileSync("git", ["-C", dir, "remote", "add", "origin", "git@github.com:NanoNets/Graft.git"]);
-  assert.equal(repoLabel(dir), "Graft", "an ssh remote names the repo, not the owner or the path");
+  execFileSync("git", ["-C", dir, "remote", "add", "origin", "git@github.com:example/Symgraph.git"]);
+  assert.equal(repoLabel(dir), "Symgraph", "an ssh remote names the repo, not the owner or the path");
 
-  execFileSync("git", ["-C", dir, "remote", "set-url", "origin", "https://github.com/NanoNets/Graft"]);
-  assert.equal(repoLabel(dir), "Graft", "and an https remote with no .git suffix reads the same");
+  execFileSync("git", ["-C", dir, "remote", "set-url", "origin", "https://github.com/example/Symgraph"]);
+  assert.equal(repoLabel(dir), "Symgraph", "and an https remote with no .git suffix reads the same");
 });
 
 test("blast viz: an empty radius says why, instead of publishing a blank canvas", () => {

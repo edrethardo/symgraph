@@ -5,7 +5,7 @@
  * The assertion that matters in every test here is the SPAN. Slicing the script
  * block out is easy; putting its symbols back on the right `.vue` line is where
  * this can go quietly wrong, and a span that is off by one is worse than no
- * indexing at all — graft's whole promise is that its `file:line` is exact, so a
+ * indexing at all — symgraph's whole promise is that its `file:line` is exact, so a
  * plausible-but-wrong line sends the reader somewhere else with full confidence.
  *
  * Every fixture below is written as an array of lines and joined, so the
@@ -206,7 +206,7 @@ test("container: multi-byte characters above the script do not shift the spans",
 });
 
 test("container: a .vue file goes through a real build end to end", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-container-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-container-"));
   mkdirSync(join(dir, "src"), { recursive: true });
 
   writeFileSync(
@@ -230,7 +230,7 @@ test("container: a .vue file goes through a real build end to end", async () => 
     ]),
   );
 
-  const outDir = join(dir, "graft");
+  const outDir = join(dir, "symgraph");
   await buildGraph(dir, outDir, { reuse: false });
   const graph = readGraph(wiringPath(outDir));
 
@@ -253,15 +253,15 @@ test("container: a .vue file goes through a real build end to end", async () => 
  *
  * `checkGraph` re-extracts and diffs against the committed graph, so a tier it
  * cannot extract reads as `removed` — and because the remedy it prints is
- * `graft build`, which wrote those very nodes, the drift can never be cleared.
- * That made `graft check` exit non-zero forever on any repo holding a `.vue`
+ * `symgraph build`, which wrote those very nodes, the drift can never be cleared.
+ * That made `symgraph check` exit non-zero forever on any repo holding a `.vue`
  * file, which is fatal for the CI drift gate it exists to be.
  *
  * Asserted on a clean build with NOTHING changed in between: the only correct
  * answer there is "in sync", so any drift at all is the bug.
  */
 test("container: a clean build of a .vue file checks as in sync", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-container-check-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-container-check-"));
   mkdirSync(join(dir, "src"), { recursive: true });
   writeFileSync(
     join(dir, "src", "Hello.vue"),
@@ -276,7 +276,7 @@ test("container: a clean build of a .vue file checks as in sync", async () => {
     ]),
   );
 
-  const outDir = join(dir, "graft");
+  const outDir = join(dir, "symgraph");
   await buildGraph(dir, outDir, { reuse: false });
   const built = readGraph(wiringPath(outDir));
   assert.ok(

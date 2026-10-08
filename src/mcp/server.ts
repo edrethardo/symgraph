@@ -8,7 +8,7 @@ import { contextDirFor } from '../context/node-file.js';
 import { loadGraphCached } from '../graph/load.js';
 import { TOOLS, callTool } from './tools.js';
 import { mcpInstructions } from './instructions.js';
-import { hasGraftIndex } from '../graph/root.js';
+import { hasSymgraphIndex } from '../graph/root.js';
 import { mainWorktreeRoot } from '../graph/seed.js';
 import { runUpkeep } from '../upkeep-run.js';
 import { runningVersion } from '../upkeep.js';
@@ -28,16 +28,16 @@ function replyError(id: unknown, code: number, message: string): void {
 /**
  * Which tools this server admits to having.
  *
- * `hosts/claude-global.ts` registers graft at the *user* MCP scope, which starts this
- * server in every project the user opens — including ones that never asked for graft.
+ * `hosts/claude-global.ts` registers symgraph at the *user* MCP scope, which starts this
+ * server in every project the user opens — including ones that never asked for symgraph.
  * Six tool schemas is real context, charged on every turn of every session, and in a
- * repo with no graph every one of them can only answer "run graft build". So a repo
- * that never invited graft is told there is nothing to call.
+ * repo with no graph every one of them can only answer "run symgraph build". So a repo
+ * that never invited symgraph is told there is nothing to call.
  *
  * The parent-checkout clause is not an optimization, it is the case the global
- * registration exists for: a fresh `git worktree add` has no `graft/` of its own
+ * registration exists for: a fresh `git worktree add` has no `symgraph/` of its own
  * (it's gitignored, so git never checks it out) and gets one from its parent on the
- * first query — see graph/seed.ts. Gating on this tree alone would hide graft in
+ * first query — see graph/seed.ts. Gating on this tree alone would hide symgraph in
  * precisely the worktree the user is trying to work in, which is the bug, inverted.
  *
  * A `--dir` override is an explicit "the graph is over there", so it always
@@ -45,9 +45,9 @@ function replyError(id: unknown, code: number, message: string): void {
  */
 function advertised(root: string, dirOverride?: string): typeof TOOLS {
   if (dirOverride !== undefined) return TOOLS;
-  if (hasGraftIndex(root)) return TOOLS;
+  if (hasSymgraphIndex(root)) return TOOLS;
   const main = mainWorktreeRoot(root);
-  return main && hasGraftIndex(main) ? TOOLS : [];
+  return main && hasSymgraphIndex(main) ? TOOLS : [];
 }
 
 /**
@@ -58,7 +58,7 @@ function advertised(root: string, dirOverride?: string): typeof TOOLS {
 export function startMcpServer(root: string, dirOverride?: string, version = '0'): void {
   // The self-maintenance pass, run once at boot. This is the ONLY channel that
   // reaches hosts with no hook support (Cursor, and any plain MCP client): it
-  // refreshes rule files an older `graft init` wrote, and kicks off the cached
+  // refreshes rule files an older `symgraph init` wrote, and kicks off the cached
   // registry check. Both are fail-soft, and the resulting lines ride along in
   // `instructions` below — stdout is protocol-only, so there is nowhere else to
   // put them. Never blocks: the registry fetch happens in a detached child.
@@ -83,7 +83,7 @@ export function startMcpServer(root: string, dirOverride?: string, version = '0'
         reply(id, {
           protocolVersion: params?.protocolVersion ?? '2024-11-05',
           capabilities: { tools: {} },
-          serverInfo: { name: 'graft', version },
+          serverInfo: { name: 'symgraph', version },
           // The one channel that survives tool deferral — see ./instructions.ts.
           // Upkeep notices ride along; the graph's coverage gap (meta.unindexed)
           // scopes the "prefer these tools" claim so an agent on a repo with

@@ -1,11 +1,11 @@
 /**
- * Retraction: undo every edit graft has ever made to a repo.
+ * Retraction: undo every edit symgraph has ever made to a repo.
  *
  * `init` is additive — it writes the files the *currently selected* hosts need
  * and never looks at the rest. So a repo wired by an older version (or by the
  * same version with different `--agents`) keeps the files that run produced,
  * and the two sets accumulate. Retraction is the missing half: it walks every
- * target graft could ever have written and removes graft's contribution, so
+ * target symgraph could ever have written and removes symgraph's contribution, so
  * `retract` + `init` converges the repo on exactly this version's intent.
  *
  * The target list is derived from the same registries `init` writes through
@@ -16,15 +16,15 @@
  * remembers the file it used to write.
  *
  * Two invariants, both load-bearing:
- *   1. Never delete what graft did not write. Inside a file the user owns, only
- *      the marker-fenced region and graft-named keys are touched; foreign MCP
+ *   1. Never delete what symgraph did not write. Inside a file the user owns, only
+ *      the marker-fenced region and symgraph-named keys are touched; foreign MCP
  *      servers, hooks, and settings are preserved byte for byte.
- *   2. Never leave an empty shell. A file that held nothing but graft's
+ *   2. Never leave an empty shell. A file that held nothing but symgraph's
  *      contribution is deleted, not truncated to `{}` or a blank document —
  *      an orphan file is the very residue this exists to remove.
  */
 import { readFileSync, writeFileSync, existsSync, rmSync, rmdirSync, statSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 import { homedir } from 'node:os';
 import { HOSTS } from './registry.js';
 import { START, END } from './sections.js';
@@ -33,16 +33,17 @@ import { hookTargets } from './codex-hooks.js';
 import { antigravitySkillTargets } from './antigravity.js';
 import { claudeGlobalTargets } from './claude-global.js';
 import { claudeTargets } from '../claude/init.js';
-import { isGraftAllowEntry, isGraftFooterRegex } from '../claude/settings-merge.js';
+import { isSymgraphAllowEntry, isSymgraphFooterRegex } from '../claude/settings-merge.js';
+import { LEGACY_NAME, NAME } from '../util/legacy.js';
 import type { WriteScope } from './plan.js';
 
 /** What a retraction did to one target. */
 export type RetractAction =
-  /** graft's contribution was there and is now gone. */
+  /** symgraph's contribution was there and is now gone. */
   | 'removed'
-  /** the whole file was graft's, so the file itself is gone. */
+  /** the whole file was symgraph's, so the file itself is gone. */
   | 'deleted'
-  /** nothing of graft's here. */
+  /** nothing of symgraph's here. */
   | 'absent'
   /** file exists but can't be parsed — left untouched rather than risk it. */
   | 'skipped-unparseable';
@@ -55,6 +56,8 @@ export interface Retraction {
   what: string;
   scope: WriteScope;
   action: RetractAction;
+  /** true → written by graft, this tool's name before the rename. */
+  legacy?: boolean;
 }
 
 export interface RetractOpts {
@@ -64,7 +67,7 @@ export interface RetractOpts {
   apply?: boolean;
   /** false → skip targets outside the repo (the ~/.codex and ~/.gemini writes). */
   global?: boolean;
-  /** false → keep `graft/` and the ignore entries. `init` sets this: the cache is
+  /** false → keep `symgraph/` and the ignore entries. `init` sets this: the cache is
    *  regenerable but re-parsing a large repo costs minutes, and init is about to
    *  use it. */
   cache?: boolean;
@@ -77,13 +80,33 @@ export interface RetractOpts {
 /**
  * Paths that older versions wrote and the live registries no longer mention.
  * Empty today — every host in `HOSTS` since the multi-host layer landed is
- * still there, and the marker string and the `graft` name have never changed,
- * so the derived list covers every version to date.
+ * still there. The one rename so far (graft → symgraph) is covered wholesale by
+ * {@link legacyNameTargets} instead of being listed path by path.
  *
  * This is where a *removed* host's file goes. Deleting an entry from `HOSTS`
  * without adding it here is what strands a file in every existing repo.
  */
 const LEGACY_TARGETS: { relPath: string; kind: 'owned' | 'section'; what: string }[] = [];
+
+/** How symgraph's entries in `.claude/settings.json` are recognized under one name. */
+interface Matchers {
+  name: string;
+  allow: (entry: unknown) => boolean;
+  footer: (re: unknown) => boolean;
+}
+
+const CURRENT: Matchers = { name: NAME, allow: isSymgraphAllowEntry, footer: isSymgraphFooterRegex };
+
+/** The same recognizers for what graft (this tool's former name) wrote. */
+const LEGACY: Matchers = {
+  name: LEGACY_NAME,
+  allow: (e) => /^Bash\((?:graft|npx graft|npx @nanonets\/graft|graft-dev)(?::|\))/.test(String(e)),
+  footer: (re) => String(re).includes('graft/'),
+};
+
+/** graft's marker fences, from before the rename. */
+const LEGACY_START = START.replace(NAME, LEGACY_NAME);
+const LEGACY_END = END.replace(NAME, LEGACY_NAME);
 
 // ---------------------------------------------------------------------------
 // primitive operations
@@ -105,7 +128,7 @@ function removeFile(path: string, apply: boolean): RetractAction {
 
 /**
  * Walk up from a just-emptied directory removing empty ancestors, so retracting
- * `.claude/skills/graft/SKILL.md` doesn't leave a hollow `skills/graft/` behind.
+ * `.claude/skills/symgraph/SKILL.md` doesn't leave a hollow `skills/symgraph/` behind.
  * Stops at the first non-empty directory — never climbs out of the repo, because
  * any ancestor that far up has other content in it.
  */
@@ -124,16 +147,16 @@ function pruneEmptyDirs(dir: string): void {
 }
 
 /**
- * Strip the marker-fenced graft block from a file the user owns.
+ * Strip the marker-fenced symgraph block from a file the user owns.
  *
  * Paragraph spacing around the removed block is collapsed back to a single
  * blank line, so a file that had prose either side of the block reads exactly
- * as it did before graft appended to it.
+ * as it did before symgraph appended to it.
  */
-function stripSection(path: string, apply: boolean): RetractAction {
+function stripSection(path: string, apply: boolean, start = START, end = END): RetractAction {
   if (!existsSync(path)) return 'absent';
   const text = readFileSync(path, 'utf8');
-  if (!text.includes(START)) return 'absent';
+  if (!text.includes(start)) return 'absent';
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   const lines = text.split(/\r\n|\n/);
   const out: string[] = [];
@@ -141,8 +164,8 @@ function stripSection(path: string, apply: boolean): RetractAction {
   let found = false;
   for (const line of lines) {
     const t = line.trim();
-    if (!inside && t === START) { inside = true; found = true; continue; }
-    if (inside) { if (t === END) inside = false; continue; }
+    if (!inside && t === start) { inside = true; found = true; continue; }
+    if (inside) { if (t === end) inside = false; continue; }
     out.push(line);
   }
   if (!found) return 'absent';
@@ -159,11 +182,11 @@ function stripSection(path: string, apply: boolean): RetractAction {
 }
 
 /**
- * Delete `<topKey>.graft` from a JSON config, preserving every other server.
+ * Delete `<topKey>.symgraph` from a JSON config, preserving every other server.
  * An unparseable file is reported and left alone — the user may have comments or
  * a half-finished edit in there, and rewriting it would lose more than it fixes.
  */
-function removeJsonKey(path: string, topKey: string, apply: boolean): RetractAction {
+function removeJsonKey(path: string, topKey: string, apply: boolean, key: string = NAME): RetractAction {
   if (!existsSync(path)) return 'absent';
   let root: Record<string, unknown>;
   try {
@@ -175,11 +198,11 @@ function removeJsonKey(path: string, topKey: string, apply: boolean): RetractAct
   const bucket = root[topKey];
   if (typeof bucket !== 'object' || bucket === null || Array.isArray(bucket)) return 'absent';
   const map = bucket as Record<string, unknown>;
-  if (!('graft' in map)) return 'absent';
+  if (!(key in map)) return 'absent';
   if (!apply) {
     return Object.keys(map).length === 1 && Object.keys(root).length === 1 ? 'deleted' : 'removed';
   }
-  delete map.graft;
+  delete map[key];
   if (Object.keys(map).length === 0) delete root[topKey];
   if (Object.keys(root).length === 0) return removeFile(path, true);
   writeFileSync(path, `${JSON.stringify(root, null, 2)}\n`);
@@ -187,15 +210,15 @@ function removeJsonKey(path: string, topKey: string, apply: boolean): RetractAct
 }
 
 /**
- * Delete the `[mcp_servers.graft]` table from a TOML config.
+ * Delete the `[mcp_servers.symgraph]` table from a TOML config.
  *
  * Line-based on purpose: a real TOML parse-and-reserialize would reformat the
  * user's whole file. The table runs from its header to the next `[`-header or
  * EOF, which is exactly what `upsertCodexToml` appends.
  */
-function removeTomlSection(path: string, apply: boolean): RetractAction {
+function removeTomlSection(path: string, apply: boolean, header?: string): RetractAction {
   if (!existsSync(path)) return 'absent';
-  const { rest: kept, found } = stripTomlSection(readFileSync(path, 'utf8'));
+  const { rest: kept, found } = stripTomlSection(readFileSync(path, 'utf8'), header);
   if (!found) return 'absent';
   if (!apply) return isBlank(kept) ? 'deleted' : 'removed';
   if (isBlank(kept)) return removeFile(path, true);
@@ -204,14 +227,14 @@ function removeTomlSection(path: string, apply: boolean): RetractAction {
 }
 
 /**
- * Remove graft's fragments from `.claude/settings.json`, keeping the user's.
+ * Remove symgraph's fragments from `.claude/settings.json`, keeping the user's.
  *
  * The statusline check is by *shim path*, not exact string equality: an older
- * version's command differed in shape, and `mergeGraftSettings` would read that
+ * version's command differed in shape, and `mergeSymgraphSettings` would read that
  * as a hand-written statusline and refuse to touch it forever. Matching the
- * helper path recognizes graft's own output across every version that wrote it.
+ * helper path recognizes symgraph's own output across every version that wrote it.
  */
-function stripClaudeSettings(path: string, apply: boolean): RetractAction {
+function stripClaudeSettings(path: string, apply: boolean, m: Matchers = CURRENT): RetractAction {
   if (!existsSync(path)) return 'absent';
   let root: Record<string, any>;
   try {
@@ -221,17 +244,17 @@ function stripClaudeSettings(path: string, apply: boolean): RetractAction {
   }
   if (typeof root !== 'object' || root === null || Array.isArray(root)) return 'skipped-unparseable';
   const before = JSON.stringify(root);
-  const isGraftCmd = (v: unknown) => JSON.stringify(v ?? '').includes('graft-statusline.cjs');
+  const isSymgraphCmd = (v: unknown) => JSON.stringify(v ?? '').includes(`${m.name}-statusline.cjs`);
 
   for (const key of ['statusLine', 'subagentStatusLine']) {
-    if (root[key] !== undefined && isGraftCmd(root[key])) delete root[key];
+    if (root[key] !== undefined && isSymgraphCmd(root[key])) delete root[key];
   }
 
   if (root.hooks && typeof root.hooks === 'object' && !Array.isArray(root.hooks)) {
     for (const event of Object.keys(root.hooks)) {
       const prior = root.hooks[event];
       if (!Array.isArray(prior)) continue;
-      const kept = prior.filter((e: unknown) => !JSON.stringify(e ?? '').includes('graft-hooks.cjs'));
+      const kept = prior.filter((e: unknown) => !JSON.stringify(e ?? '').includes(`${m.name}-hooks.cjs`));
       if (kept.length === 0) delete root.hooks[event];
       else root.hooks[event] = kept;
     }
@@ -239,13 +262,13 @@ function stripClaudeSettings(path: string, apply: boolean): RetractAction {
   }
 
   if (Array.isArray(root.footerLinksRegexes)) {
-    const kept = root.footerLinksRegexes.filter((r: unknown) => !isGraftFooterRegex(r));
+    const kept = root.footerLinksRegexes.filter((r: unknown) => !m.footer(r));
     if (kept.length === 0) delete root.footerLinksRegexes;
     else root.footerLinksRegexes = kept;
   }
 
   if (root.permissions && Array.isArray(root.permissions.allow)) {
-    const kept = root.permissions.allow.filter((a: unknown) => !isGraftAllowEntry(a));
+    const kept = root.permissions.allow.filter((a: unknown) => !m.allow(a));
     if (kept.length === 0) delete root.permissions.allow;
     else root.permissions.allow = kept;
     if (Object.keys(root.permissions).length === 0) delete root.permissions;
@@ -259,8 +282,8 @@ function stripClaudeSettings(path: string, apply: boolean): RetractAction {
   return 'removed';
 }
 
-/** Remove graft's PostToolUse/SessionStart/etc. entries from Codex's hooks.json. */
-function stripCodexHooks(path: string, apply: boolean): RetractAction {
+/** Remove symgraph's PostToolUse/SessionStart/etc. entries from Codex's hooks.json. */
+function stripCodexHooks(path: string, apply: boolean, name: string = NAME): RetractAction {
   if (!existsSync(path)) return 'absent';
   let root: Record<string, any>;
   try {
@@ -274,7 +297,7 @@ function stripCodexHooks(path: string, apply: boolean): RetractAction {
   for (const event of Object.keys(root.hooks)) {
     const prior = root.hooks[event];
     if (!Array.isArray(prior)) continue;
-    const kept = prior.filter((e: unknown) => !JSON.stringify(e ?? '').includes('graft-hooks.cjs'));
+    const kept = prior.filter((e: unknown) => !JSON.stringify(e ?? '').includes(`${name}-hooks.cjs`));
     if (kept.length === 0) delete root.hooks[event];
     else root.hooks[event] = kept;
   }
@@ -287,20 +310,25 @@ function stripCodexHooks(path: string, apply: boolean): RetractAction {
 }
 
 /**
- * Drop graft's block from `.gitignore` / `.ignore`.
+ * Drop symgraph's block from `.gitignore` / `.ignore`.
  *
- * Both are written as a comment line plus entries; the comment is graft's own
+ * Both are written as a comment line plus entries; the comment is symgraph's own
  * wording, so it identifies the block. Entries are matched individually too, so
  * a hand-tidied file (comment deleted, entry kept) still retracts cleanly.
  */
-function stripIgnoreEntries(path: string, entries: RegExp[], apply: boolean): RetractAction {
+function stripIgnoreEntries(path: string, entries: RegExp[], apply: boolean, name: string = NAME): RetractAction {
   if (!existsSync(path)) return 'absent';
   const text = readFileSync(path, 'utf8');
+  // A comment naming the tool starts its block; a comment line straight after it
+  // is that comment's continuation (the .ignore note runs over two lines).
+  let inComment = false;
   const kept = text
     .split('\n')
     .filter((l) => {
       const t = l.trim();
-      if (t.startsWith('#') && t.includes('graft')) return false;
+      const ours = t.startsWith('#') && (t.includes(name) || inComment);
+      inComment = ours;
+      if (ours) return false;
       return !entries.some((re) => re.test(t));
     })
     .join('\n')
@@ -337,7 +365,7 @@ interface Target extends Omit<Retraction, 'action'> {
 }
 
 /**
- * Every target graft could have written, in removal order.
+ * Every target symgraph could have written, in removal order.
  *
  * Derived from the live registries, NOT hand-listed: `HOSTS` gives the
  * instruction files, `mcpTargets` over *all* host ids gives the MCP configs
@@ -387,8 +415,8 @@ function targets(repo: string, opts: RetractOpts): Target[] {
     const path = join(repo, host.relPath);
     add(
       host.kind === 'owned'
-        ? { hostId: host.id, path, what: 'graft-owned instruction file', scope: 'repo', run: (a) => removeFile(path, a) }
-        : { hostId: host.id, path, what: 'fenced graft section', scope: 'repo', run: (a) => stripSection(path, a) },
+        ? { hostId: host.id, path, what: 'symgraph-owned instruction file', scope: 'repo', run: (a) => removeFile(path, a) }
+        : { hostId: host.id, path, what: 'fenced symgraph section', scope: 'repo', run: (a) => stripSection(path, a) },
     );
   }
 
@@ -419,8 +447,8 @@ function targets(repo: string, opts: RetractOpts): Target[] {
       { hostId: 'claude', path: settings, what: 'statusline + hooks + allowlist + footer regex', scope: 'repo', run: (a) => stripClaudeSettings(settings, a) },
       { hostId: 'claude', path: statusline, what: 'statusline shim', scope: 'repo', run: (a) => removeFile(statusline, a) },
       { hostId: 'claude', path: hooks, what: 'hooks shim', scope: 'repo', run: (a) => removeFile(hooks, a) },
-      { hostId: 'claude', path: skill, what: 'graft skill', scope: 'repo', run: (a) => removeFile(skill, a) },
-      { hostId: 'claude', path: mcp, what: 'mcpServers.graft', scope: 'repo', run: (a) => removeJsonKey(mcp, 'mcpServers', a) },
+      { hostId: 'claude', path: skill, what: 'symgraph skill', scope: 'repo', run: (a) => removeFile(skill, a) },
+      { hostId: 'claude', path: mcp, what: 'mcpServers.symgraph', scope: 'repo', run: (a) => removeJsonKey(mcp, 'mcpServers', a) },
     ] as Target[]) add(t);
   }
 
@@ -453,16 +481,108 @@ function targets(repo: string, opts: RetractOpts): Target[] {
   // 5. The graph cache and the ignore entries that admit it. Last, so a failure
   //    here can't strand the wiring half-retracted.
   if (opts.cache !== false) {
-    const cache = join(repo, 'graft');
+    const cache = join(repo, 'symgraph');
     const gitignore = join(repo, '.gitignore');
     const ignore = join(repo, '.ignore');
     for (const t of [
       { hostId: 'graph', path: cache, what: 'local graph cache', scope: 'repo', run: (a) => removeDir(cache, a) },
-      { hostId: 'graph', path: gitignore, what: 'graft/ ignore entry', scope: 'repo', run: (a) => stripIgnoreEntries(gitignore, [/^\/?graft\/?$/], a) },
-      { hostId: 'graph', path: ignore, what: 'graft/ search re-admit entries', scope: 'repo', run: (a) => stripIgnoreEntries(ignore, [/^!?graft\/?$/, /^graft\/\.(cache|graph)\/?$/], a) },
+      { hostId: 'graph', path: gitignore, what: 'symgraph/ ignore entry', scope: 'repo', run: (a) => stripIgnoreEntries(gitignore, [/^\/?symgraph\/?$/], a) },
+      { hostId: 'graph', path: ignore, what: 'symgraph/ search re-admit entries', scope: 'repo', run: (a) => stripIgnoreEntries(ignore, [/^!?symgraph\/?$/, /^symgraph\/\.(cache|graph)\/?$/], a) },
     ] as Target[]) add(t);
   }
 
+  return out;
+}
+
+/**
+ * Everything graft — this tool's name before the rename — wrote, so `init`
+ * converges a graft-era repo and `uninstall` leaves nothing of either name.
+ *
+ * Derived from the same registries as {@link targets}: each current path with
+ * `symgraph` spelled `graft` in its repo- or home-relative part is where graft
+ * put that file (`.claude/helpers/graft-hooks.cjs`, `~/.codex/hooks/graft/…`), and
+ * shared files get graft's key, TOML table, marker fences or hook entries removed.
+ *
+ * Unlike {@link targets} these ignore `exclude`: a host being re-written keeps its
+ * symgraph wiring, but its graft wiring is exactly the duplicate to remove. An
+ * owned file whose path has no `symgraph` in it maps onto itself and is left to
+ * the regular targets, so init never deletes the file it is about to rewrite.
+ */
+function legacyNameTargets(repo: string, opts: RetractOpts): Target[] {
+  const home = opts.home ?? homedir();
+  const old = (base: string, p: string): string => join(base, relative(base, p).split(NAME).join(LEGACY_NAME));
+  const out: Target[] = [];
+  const seen = new Set<string>();
+  const add = (t: Target): void => {
+    const key = `${t.path}\0${t.what}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ ...t, legacy: true });
+  };
+  const what = (w: string): string => `${w} (graft)`;
+
+  for (const host of HOSTS) {
+    const now = join(repo, host.relPath);
+    const path = old(repo, now);
+    if (host.kind === 'owned') {
+      if (path !== now) add({ hostId: host.id, path, what: what('instruction file'), scope: 'repo', run: (a) => removeFile(path, a) });
+    } else {
+      add({ hostId: host.id, path, what: what('fenced section'), scope: 'repo', run: (a) => stripSection(path, a, LEGACY_START, LEGACY_END) });
+    }
+  }
+
+  for (const t of mcpTargets(repo, HOSTS.map((h) => h.id), { home })) {
+    if (opts.global === false && t.scope === 'global') continue;
+    const path = old(t.scope === 'global' ? home : repo, t.path);
+    add({
+      hostId: t.hostId, path, what: what(t.what.split(NAME).join(LEGACY_NAME)), scope: t.scope,
+      run: (a) => (t.format === 'toml'
+        ? removeTomlSection(path, a, `[mcp_servers.${LEGACY_NAME}]`)
+        : removeJsonKey(path, t.topKey!, a, LEGACY_NAME)),
+    });
+  }
+
+  const [settings, statusline, hooks, skill, mcp] = claudeTargets(repo).map((t) => old(repo, t.path));
+  for (const t of [
+    { hostId: 'claude', path: settings, what: what('statusline + hooks + allowlist + footer regex'), scope: 'repo', run: (a) => stripClaudeSettings(settings, a, LEGACY) },
+    { hostId: 'claude', path: statusline, what: what('statusline shim'), scope: 'repo', run: (a) => removeFile(statusline, a) },
+    { hostId: 'claude', path: hooks, what: what('hooks shim'), scope: 'repo', run: (a) => removeFile(hooks, a) },
+    { hostId: 'claude', path: skill, what: what('skill'), scope: 'repo', run: (a) => removeFile(skill, a) },
+    { hostId: 'claude', path: mcp, what: what('mcpServers.graft'), scope: 'repo', run: (a) => removeJsonKey(mcp, 'mcpServers', a, LEGACY_NAME) },
+  ] as Target[]) add(t);
+
+  if (opts.global !== false) {
+    const [shim, gsettings, gmcp] = claudeGlobalTargets(home).map((t) => old(home, t.path));
+    for (const t of [
+      { hostId: 'claude', path: shim, what: what('hooks shim (user level)'), scope: 'global', run: (a) => removeFile(shim, a) },
+      { hostId: 'claude', path: gsettings, what: what('user-level hooks + statusline'), scope: 'global', run: (a) => stripClaudeSettings(gsettings, a, LEGACY) },
+      { hostId: 'claude', path: gmcp, what: what('mcpServers.graft (user level)'), scope: 'global', run: (a) => removeJsonKey(gmcp, 'mcpServers', a, LEGACY_NAME) },
+    ] as Target[]) add(t);
+    for (const t of hookTargets(home)) {
+      const path = old(home, t.path);
+      add({
+        hostId: t.hostId, path, what: what(t.what), scope: 'global',
+        run: (a) => (path.endsWith('.json') ? stripCodexHooks(path, a, LEGACY_NAME) : removeFile(path, a)),
+      });
+    }
+    for (const t of antigravitySkillTargets(home)) {
+      const path = old(home, t.path);
+      add({ hostId: t.hostId, path, what: what(t.what), scope: 'global', run: (a) => removeFile(path, a) });
+    }
+  }
+
+  if (opts.cache !== false) {
+    const cache = join(repo, LEGACY_NAME);
+    const gitignore = join(repo, '.gitignore');
+    const ignore = join(repo, '.ignore');
+    // Only a `graft/` that a build wrote — a source folder of that name is not ours.
+    const isCache = (): boolean => existsSync(join(cache, '.graph')) || existsSync(join(cache, '.cache'));
+    for (const t of [
+      { hostId: 'graph', path: cache, what: what('local graph cache'), scope: 'repo', run: (a) => (isCache() ? removeDir(cache, a) : 'absent') },
+      { hostId: 'graph', path: gitignore, what: what('graft/ ignore entry'), scope: 'repo', run: (a) => stripIgnoreEntries(gitignore, [/^\/?\.?graft\/?$/], a, `${LEGACY_NAME}'s`) },
+      { hostId: 'graph', path: ignore, what: what('graft/ search re-admit entries'), scope: 'repo', run: (a) => stripIgnoreEntries(ignore, [/^!?graft\/?$/, /^graft\/\.(cache|graph)\/?$/], a, `${LEGACY_NAME}'s`) },
+    ] as Target[]) add(t);
+  }
   return out;
 }
 
@@ -472,17 +592,23 @@ function targets(repo: string, opts: RetractOpts): Target[] {
 
 /** What a retraction *would* remove. Pure — touches nothing. */
 export function planRetract(repo: string, opts: RetractOpts = {}): Retraction[] {
-  return targets(repo, { ...opts, apply: false }).map(({ run, ...t }) => ({ ...t, action: run(false) }));
+  return allTargets(repo, { ...opts, apply: false }).map(({ run, ...t }) => ({ ...t, action: run(false) }));
+}
+
+/** graft-era wiring first, so a shared file loses graft's part before symgraph's
+ *  own entries are considered. */
+function allTargets(repo: string, opts: RetractOpts): Target[] {
+  return [...legacyNameTargets(repo, opts), ...targets(repo, opts)];
 }
 
 /**
- * Remove graft's contribution from every target. Reports every target it
+ * Remove symgraph's contribution from every target. Reports every target it
  * considered, including the ones that were already clean, so a caller can show
  * either the full sweep or just what changed.
  */
 export function runRetract(repo: string, opts: RetractOpts = {}): Retraction[] {
   const apply = opts.apply !== false;
-  return targets(repo, opts).map(({ run, ...t }) => ({ ...t, action: run(apply) }));
+  return allTargets(repo, opts).map(({ run, ...t }) => ({ ...t, action: run(apply) }));
 }
 
 /** The subset worth showing a user: targets that had something to remove. */

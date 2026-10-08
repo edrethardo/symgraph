@@ -43,7 +43,7 @@ function utf16be(text: string): Buffer {
 }
 
 test("readSourceFile: decodes a UTF-16LE BOM, returns null for UTF-16BE, and reads plain UTF-8 unchanged", () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-utf16-unit-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-utf16-unit-"));
   try {
     writeFileSync(join(dir, "le.ts"), utf16le("export const x = 1;\n"));
     writeFileSync(join(dir, "be.ts"), utf16be("export const x = 1;\n"));
@@ -58,12 +58,12 @@ test("readSourceFile: decodes a UTF-16LE BOM, returns null for UTF-16BE, and rea
 });
 
 test("A1 graph/build.ts: a UTF-16LE .ts file is decoded at graph ingest, not mojibake-parsed", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-utf16-build-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-utf16-build-"));
   try {
     writeFileSync(join(dir, "legacy.ts"), utf16le("export function fromLegacy(): void {}\n"));
     const r = await buildGraph(dir);
     assert.deepEqual(r.errors, []);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     assert.ok(graph.nodes.some((n) => n.id === "legacy.ts#fromLegacy"), "the UTF-16LE file's function must be extracted");
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -71,12 +71,12 @@ test("A1 graph/build.ts: a UTF-16LE .ts file is decoded at graph ingest, not moj
 });
 
 test("A1 graph/build.ts: a UTF-16BE file is an empty entry, not a build error (null → empty-entry posture)", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-utf16be-build-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-utf16be-build-"));
   try {
     writeFileSync(join(dir, "legacy.ts"), utf16be("export function fromLegacy(): void {}\n"));
     const r = await buildGraph(dir);
     assert.deepEqual(r.errors, [], "an unsupported encoding is a skip, never an error");
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     assert.ok(!graph.nodes.some((n) => n.path === "legacy.ts"), "no nodes minted for the undecodable file");
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -84,7 +84,7 @@ test("A1 graph/build.ts: a UTF-16BE file is an empty entry, not a build error (n
 });
 
 test("A1 hash-what-you-parse consistency: build/check/fingerprint agree on a UTF-16LE file", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-utf16-consistency-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-utf16-consistency-"));
   try {
     writeFileSync(join(dir, "legacy.py"), utf16le("def from_legacy():\n    return 42\n"));
     await buildGraph(dir);
@@ -95,7 +95,7 @@ test("A1 hash-what-you-parse consistency: build/check/fingerprint agree on a UTF
     assert.deepEqual(check.removed, []);
     assert.deepEqual(check.changed, []);
 
-    const drift = probeDrift(join(dir), join(dir, "graft"));
+    const drift = probeDrift(join(dir), join(dir, "symgraph"));
     assert.deepEqual(drift, { changed: [], added: [], removed: [] }, "fingerprint's probe must agree too — no drift");
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -103,8 +103,8 @@ test("A1 hash-what-you-parse consistency: build/check/fingerprint agree on a UTF
 });
 
 test("A1 fingerprint reports drift when indexed UTF-16LE becomes unsupported UTF-16BE", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-utf16-drift-"));
-  const previousRefresh = process.env.GRAFT_REFRESH;
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-utf16-drift-"));
+  const previousRefresh = process.env.SYMGRAPH_REFRESH;
   try {
     const file = join(dir, "legacy.ts");
     const source = "export function fromLegacy(): void {}\n";
@@ -112,28 +112,28 @@ test("A1 fingerprint reports drift when indexed UTF-16LE becomes unsupported UTF
     await buildGraph(dir);
 
     writeFileSync(file, utf16be(source));
-    process.env.GRAFT_REFRESH = "hash";
+    process.env.SYMGRAPH_REFRESH = "hash";
     assert.deepEqual(
-      probeDrift(dir, join(dir, "graft")),
+      probeDrift(dir, join(dir, "symgraph")),
       { changed: ["legacy.ts"], added: [], removed: [] },
       "becoming undecodable must rebuild once instead of serving stale UTF-16LE nodes",
     );
 
     await buildGraph(dir);
     assert.deepEqual(
-      probeDrift(dir, join(dir, "graft")),
+      probeDrift(dir, join(dir, "symgraph")),
       { changed: [], added: [], removed: [] },
       "after the rebuild records an unsupported file, the probe must not churn",
     );
   } finally {
-    if (previousRefresh === undefined) delete process.env.GRAFT_REFRESH;
-    else process.env.GRAFT_REFRESH = previousRefresh;
+    if (previousRefresh === undefined) delete process.env.SYMGRAPH_REFRESH;
+    else process.env.SYMGRAPH_REFRESH = previousRefresh;
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("A1 context/build.ts + check.ts: a UTF-16LE file's summarizer input decodes cleanly, and the two tiers' content hash stays consistent", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-utf16-context-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-utf16-context-"));
   try {
     writeFileSync(
       join(dir, "legacy.ts"),
@@ -155,14 +155,14 @@ test("A1 context/build.ts + check.ts: a UTF-16LE file's summarizer input decodes
 });
 
 test("A1 search/grep.ts: finds a pattern inside a UTF-16LE file", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-utf16-grep-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-utf16-grep-"));
   try {
     writeFileSync(
       join(dir, "legacy.ts"),
       utf16le("export function fromLegacy(): void {\n  console.log(\"NEEDLE hit\");\n}\n"),
     );
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     assert.ok(graph.nodes.some((n) => n.id === "legacy.ts#fromLegacy"), "sanity: the file parses (extract already routes through readSourceFile)");
 
     const r = grepGraph(graph, dir, "NEEDLE");
@@ -174,7 +174,7 @@ test("A1 search/grep.ts: finds a pattern inside a UTF-16LE file", async () => {
 });
 
 test("A1 ask.ts --source: inlines clean (non-garbled) source sliced from a UTF-16LE file", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-utf16-ask-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-utf16-ask-"));
   try {
     writeFileSync(
       join(dir, "legacy.ts"),

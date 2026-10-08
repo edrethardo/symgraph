@@ -6,7 +6,7 @@
  * same graph. Both are things every future extraction/resolution change must keep
  * true; without this a malformed edge or a nondeterministic ordering would ship
  * silently. Uses the shared `checkGraphInvariants` so the gate and any future
- * `graft check --invariants` cannot drift apart.
+ * `symgraph check --invariants` cannot drift apart.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -53,7 +53,7 @@ function identity(g: GraphV1): { nodes: string[]; edges: string[] } {
 }
 
 test("Tier-0: a built multi-tier graph satisfies every structural invariant", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-invariants-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-invariants-"));
   try {
     writeFixture(dir);
     await buildGraph(dir, { reuse: false });
@@ -121,7 +121,7 @@ test("Tier-0: the invariant checker actually catches malformed graphs (not vacuo
 
 test("Tier-0: the build is deterministic — two cold builds produce the identical graph", async () => {
   const build = async (): Promise<GraphV1> => {
-    const dir = mkdtempSync(join(tmpdir(), "graft-determinism-"));
+    const dir = mkdtempSync(join(tmpdir(), "symgraph-determinism-"));
     try {
       writeFixture(dir);
       await buildGraph(dir, { reuse: false });

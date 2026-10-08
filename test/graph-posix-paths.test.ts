@@ -42,7 +42,7 @@ const TOOL = ["export function mjsOnlySymbol() {", "  return 2;", "}", ""].join(
 
 /** Issue #35's repro: 5 files across 3 directories, one of them nested deeper. */
 function repo(): string {
-  const d = mkdtempSync(join(tmpdir(), "graft-posix-"));
+  const d = mkdtempSync(join(tmpdir(), "symgraph-posix-"));
   mkdirSync(join(d, "src", "deep"), { recursive: true });
   mkdirSync(join(d, "lib"), { recursive: true });
   mkdirSync(join(d, "scripts"), { recursive: true });
@@ -54,7 +54,7 @@ function repo(): string {
   return d;
 }
 
-const outOf = (d: string): string => join(d, "graft");
+const outOf = (d: string): string => join(d, "symgraph");
 const graphOf = (d: string): GraphV1 => readGraph(wiringPath(outOf(d)))!;
 
 test("a built graph stores no platform separator in any node id or path", async () => {

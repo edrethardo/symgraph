@@ -1,15 +1,15 @@
 /**
- * CLI wiring + human formatter for `graft grep`.
+ * CLI wiring + human formatter for `symgraph grep`.
  *
  * Kept out of cli.ts (argument wiring only) and out of grep.ts (pure core,
  * unit-testable against hand-built fixture graphs without touching a real
  * repo root) — same split as traverse.ts/traverse-cli.ts. `formatGrepResult`
- * is exported so `graft_find_all` in `src/mcp/tools.ts` renders the identical
+ * is exported so `symgraph_find_all` in `src/mcp/tools.ts` renders the identical
  * report, rather than re-implementing it.
  */
 import { resolve } from "node:path";
 import { contextDirFor } from "../context/node-file.js";
-import { withGraftLine } from "../context/savings.js";
+import { withSymgraphLine } from "../context/savings.js";
 import { unindexedNote, type UnindexedStat } from "../graph/coverage.js";
 import { loadGraphCached } from "../graph/load.js";
 import { grepGraph, type GrepGroup, type GrepResult } from "./grep.js";
@@ -55,12 +55,12 @@ function truncationNote(result: GrepResult): string | null {
 export function formatGrepResult(result: GrepResult): string {
   // The truncation note rides directly under the header, not at the bottom:
   // "never silent" has to survive a `head -N` too (same reason the savings
-  // line is a header — see withGraftLine).
+  // line is a header — see withSymgraphLine).
   const note = truncationNote(result);
   const head = note ? `${formatGrepHeader(result)}\n${note}` : formatGrepHeader(result);
   const blocks = [head, "", ...result.groups.map((g) => formatGroup(g) + "\n")];
   const out = blocks.join("\n").replace(/\n+$/, "\n");
-  return withGraftLine(out, result.saved);
+  return withSymgraphLine(out, result.saved);
 }
 
 /** Loud, actionable zero-hit note (never a bare empty result) — printed to
@@ -77,14 +77,14 @@ export function formatGrepResult(result: GrepResult): string {
  * deeply misleading — the pattern may simply live in a language with no
  * parser, and raw grep -rn is then the RIGHT tool, not a fallback (issue #66). */
 export function zeroHitNote(result: GrepResult, unindexed?: UnindexedStat[]): string {
-  const retry = `no hits for "${result.pattern}" in ${result.filesSearched} indexed files. The pattern may be too specific — retry graft grep with a bare symbol name or short substring (drop the receiver, full signature, and regex anchors).`;
+  const retry = `no hits for "${result.pattern}" in ${result.filesSearched} indexed files. The pattern may be too specific — retry symgraph grep with a bare symbol name or short substring (drop the receiver, full signature, and regex anchors).`;
   const gap = unindexedNote(unindexed);
   const base = gap
     ? `${retry} All indexed code was searched, but ${gap}`
     : `${retry} All indexed code was searched; use raw grep -rn only for genuinely unindexed files (docs, configs, brand-new files)`;
   const { files } = result.truncated;
   if (files === 0) return base;
-  return `${base} — note: ${files} indexed file${files === 1 ? "" : "s"} could not be read (stale graph? run graft build)`;
+  return `${base} — note: ${files} indexed file${files === 1 ? "" : "s"} could not be read (stale graph? run symgraph build)`;
 }
 
 /**
@@ -99,7 +99,7 @@ export function runGrepCommand(pattern: string, dir: string, opts: GrepCliOption
   const contextDir = contextDirFor(root, opts.globalDir);
   const graph = loadGraphCached(contextDir);
   if (!graph) {
-    console.error("✗ no graph — run graft build first");
+    console.error("✗ no graph — run symgraph build first");
     process.exit(1);
   }
 

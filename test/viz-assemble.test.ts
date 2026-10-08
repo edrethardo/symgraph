@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { assembleContextGraph, normalizeRelation } from "../src/viz/assemble.js";
 
 function makeContextDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graftviz-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraphviz-"));
   writeFileSync(
     join(dir, "alpha.md"),
     `---

@@ -1,11 +1,11 @@
 /**
- * `graft build --only-dir <path>` end-to-end through the real CLI.
+ * `symgraph build --only-dir <path>` end-to-end through the real CLI.
  *
  * The whitelist is the inverse of SKIP_DIRS: when set, ONLY files under the
  * listed repo-relative prefixes are indexed, and everything else (including
  * top-level files) is skipped. It is recorded in the fingerprint — the graph's
- * own freshness sidecar under `graft/` — never in the source repo's
- * `.graft/config.json`, so a limited build leaves no trace under the repo being
+ * own freshness sidecar under `symgraph/` — never in the source repo's
+ * `.symgraph/config.json`, so a limited build leaves no trace under the repo being
  * indexed. That also keeps the query-path freshness probe honest: the excluded
  * files must not read as phantom "added" drift on every query.
  */
@@ -20,7 +20,7 @@ import { probeDrift, isClean, readFingerprint } from "../src/graph/fingerprint.j
 import type { GraphV1 } from "../src/graph/types.js";
 
 function repoWithDirs(): string {
-  const d = mkdtempSync(join(tmpdir(), "graft-only-dir-"));
+  const d = mkdtempSync(join(tmpdir(), "symgraph-only-dir-"));
   mkdirSync(join(d, "src", "a"), { recursive: true });
   mkdirSync(join(d, "src", "b"), { recursive: true });
   writeFileSync(join(d, "src", "a", "a.ts"), "export function a(): number {\n  return 1;\n}\n");
@@ -34,7 +34,7 @@ function runCli(args: string[]): void {
 }
 
 function graphOf(d: string): GraphV1 | null {
-  return readGraph(wiringPath(join(d, "graft")));
+  return readGraph(wiringPath(join(d, "symgraph")));
 }
 
 test("--only-dir limits the walk, records the whitelist in the fingerprint, and the probe stays clean", () => {
@@ -57,14 +57,14 @@ test("--only-dir limits the walk, records the whitelist in the fingerprint, and 
     assert.ok(!limited!.nodes.some((n) => n.path === "top.ts"), "top.ts must be skipped");
 
     // The whitelist lives in the fingerprint, not the source repo's config.
-    const fp = readFingerprint(join(d, "graft"));
+    const fp = readFingerprint(join(d, "symgraph"));
     assert.deepEqual(fp?.onlyDirs, ["src/a"], "fingerprint must record the whitelist");
-    assert.ok(!existsSync(join(d, ".graft", "config.json")), "source repo config must be untouched");
+    assert.ok(!existsSync(join(d, ".symgraph", "config.json")), "source repo config must be untouched");
 
     // The fingerprint probe (the fast path `ensureFreshGraph`/hooks use, which
     // never sees CLI flags) must enumerate the same whitelisted set — so the
     // excluded src/b and top.ts are NOT reported as phantom "added" drift.
-    const drift = probeDrift(d, join(d, "graft"));
+    const drift = probeDrift(d, join(d, "symgraph"));
     assert.ok(drift && isClean(drift), "excluded files must not read as drift");
   } finally {
     rmSync(d, { recursive: true, force: true });

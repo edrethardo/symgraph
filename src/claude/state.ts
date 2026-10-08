@@ -1,5 +1,5 @@
 /**
- * Claude Code session state. The shared `graft/.cache/` pieces (the statusline's
+ * Claude Code session state. The shared `symgraph/.cache/` pieces (the statusline's
  * `Stats` snapshot and the build lock) live in `../util/state.js` so the graph's
  * pre-query auto-refresh can take the same lock; they are re-exported here so
  * every existing import path keeps working.
@@ -26,11 +26,11 @@ export type { Stats } from '../util/state.js';
 export interface SessionState {
   lastQuery: string | null;
   perAgentQuery: Record<string, string>;
-  graftReads: number; sourceReads: number;
-  /** Graft retrieval calls this session (CLI + MCP). Replaced a summed
+  symgraphReads: number; sourceReads: number;
+  /** Symgraph retrieval calls this session (CLI + MCP). Replaced a summed
    * tokens-saved estimate whose baseline — every covered file read in full —
    * nobody would actually have paid; a call count is a fact. */
-  graftCalls: number;
+  symgraphCalls: number;
   /** Pointers the prompt hook already injected this session (novelty gate:
    * a hit whose pointer was shown once is never re-injected). Optional so
    * session files written before this field still parse. */
@@ -41,7 +41,7 @@ export interface SessionState {
 }
 
 function emptySession(): SessionState {
-  return { lastQuery: null, perAgentQuery: {}, graftReads: 0, sourceReads: 0, graftCalls: 0, injectedPointers: [], nudges: 0 };
+  return { lastQuery: null, perAgentQuery: {}, symgraphReads: 0, sourceReads: 0, symgraphCalls: 0, injectedPointers: [], nudges: 0 };
 }
 
 function sessionPath(d: string, id: string): string { return join(cacheDir(d), 'session', `${id}.json`); }

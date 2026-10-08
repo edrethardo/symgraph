@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 // Pin the MCP launch form so expectations don't depend on whether the machine
-// running the tests happens to have graft on PATH.
-process.env.GRAFT_MCP_NPX = '1';
+// running the tests happens to have symgraph on PATH.
+process.env.SYMGRAPH_MCP_NPX = '1';
 
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,10 +12,10 @@ import { planRetract, runRetract, changed } from '../src/hosts/retract.js';
 import { runInit } from '../src/claude/init.js';
 import { runHostsInit } from '../src/hosts/init.js';
 import { registerMcpConfigs } from '../src/hosts/mcp-config.js';
-import { mergeGraftSettings } from '../src/claude/settings-merge.js';
+import { mergeSymgraphSettings } from '../src/claude/settings-merge.js';
 
 function fresh(): string {
-  return mkdtempSync(join(tmpdir(), 'graft-retract-'));
+  return mkdtempSync(join(tmpdir(), 'symgraph-retract-'));
 }
 
 function write(dir: string, rel: string, body: string): string {
@@ -30,7 +30,7 @@ function byPath(rs: ReturnType<typeof runRetract>): Map<string, string> {
   return new Map(rs.map((r) => [r.path, r.action]));
 }
 
-const BLOCK = '<!-- graft:start -->\n## Graft — old text\nstale guidance\n<!-- graft:end -->';
+const BLOCK = '<!-- symgraph:start -->\n## Symgraph — old text\nstale guidance\n<!-- symgraph:end -->';
 
 // --------------------------------------------------------------------------
 // instruction files
@@ -38,7 +38,7 @@ const BLOCK = '<!-- graft:start -->\n## Graft — old text\nstale guidance\n<!--
 
 test('an owned instruction file is deleted outright', () => {
   const d = fresh();
-  const rule = write(d, join('.cursor', 'rules', 'graft.mdc'), 'stale cursor rule\n');
+  const rule = write(d, join('.cursor', 'rules', 'symgraph.mdc'), 'stale cursor rule\n');
   const r = byPath(runRetract(d, { apply: true, global: false }));
   assert.equal(r.get(rule), 'deleted');
   assert.ok(!existsSync(rule));
@@ -51,7 +51,7 @@ test('a fenced section is stripped and the user\'s prose survives intact', () =>
   assert.equal(readFileSync(agents, 'utf8'), '# My repo\n\nUser notes here.\n\nMore user notes.\n');
 });
 
-test('a file that held nothing but the graft block is deleted, not left blank', () => {
+test('a file that held nothing but the symgraph block is deleted, not left blank', () => {
   const d = fresh();
   const gemini = write(d, 'GEMINI.md', `${BLOCK}\n`);
   const r = byPath(runRetract(d, { apply: true, global: false }));
@@ -59,7 +59,7 @@ test('a file that held nothing but the graft block is deleted, not left blank', 
   assert.ok(!existsSync(gemini), 'an empty GEMINI.md is residue too');
 });
 
-test('a shared file with no graft block is reported absent and never touched', () => {
+test('a shared file with no symgraph block is reported absent and never touched', () => {
   const d = fresh();
   const agents = write(d, 'AGENTS.md', '# Just my notes\n');
   const r = byPath(runRetract(d, { apply: true, global: false }));
@@ -71,19 +71,19 @@ test('a shared file with no graft block is reported absent and never touched', (
 // JSON configs
 // --------------------------------------------------------------------------
 
-test('mcpServers.graft is removed and foreign servers are preserved', () => {
+test('mcpServers.symgraph is removed and foreign servers are preserved', () => {
   const d = fresh();
   const mcp = write(d, '.mcp.json', JSON.stringify({
-    mcpServers: { graft: { command: 'graft', args: ['mcp'] }, other: { command: 'x' } },
+    mcpServers: { symgraph: { command: 'symgraph', args: ['mcp'] }, other: { command: 'x' } },
   }));
   runRetract(d, { apply: true, global: false });
   const root = JSON.parse(readFileSync(mcp, 'utf8'));
   assert.deepEqual(Object.keys(root.mcpServers), ['other']);
 });
 
-test('a JSON config holding only the graft server is deleted', () => {
+test('a JSON config holding only the symgraph server is deleted', () => {
   const d = fresh();
-  const kiro = write(d, join('.kiro', 'settings', 'mcp.json'), JSON.stringify({ mcpServers: { graft: {} } }));
+  const kiro = write(d, join('.kiro', 'settings', 'mcp.json'), JSON.stringify({ mcpServers: { symgraph: {} } }));
   const r = byPath(runRetract(d, { apply: true, global: false }));
   assert.equal(r.get(kiro), 'deleted');
   assert.ok(!existsSync(kiro), 'no orphan {} left behind');
@@ -91,7 +91,7 @@ test('a JSON config holding only the graft server is deleted', () => {
 
 test('unparseable JSON is reported and left byte-for-byte alone', () => {
   const d = fresh();
-  const body = '{ "mcpServers": { "graft": }  // trailing junk\n';
+  const body = '{ "mcpServers": { "symgraph": }  // trailing junk\n';
   const mcp = write(d, '.mcp.json', body);
   const r = byPath(runRetract(d, { apply: true, global: false }));
   assert.equal(r.get(mcp), 'skipped-unparseable');
@@ -102,41 +102,41 @@ test('unparseable JSON is reported and left byte-for-byte alone', () => {
 // TOML
 // --------------------------------------------------------------------------
 
-test('[mcp_servers.graft] is removed and the neighbouring table survives', () => {
+test('[mcp_servers.symgraph] is removed and the neighbouring table survives', () => {
   const d = fresh();
   const toml = write(d, join('.grok', 'config.toml'),
-    '[mcp_servers.graft]\ncommand = "npx"\nargs = ["-y","@nanonets/graft","mcp"]\n\n[mcp_servers.keepme]\ncommand = "y"\n');
+    '[mcp_servers.symgraph]\ncommand = "npx"\nargs = ["-y","symgraph","mcp"]\n\n[mcp_servers.keepme]\ncommand = "y"\n');
   runRetract(d, { apply: true, global: false });
   const text = readFileSync(toml, 'utf8');
-  assert.ok(!text.includes('mcp_servers.graft'));
+  assert.ok(!text.includes('mcp_servers.symgraph'));
   assert.ok(text.includes('[mcp_servers.keepme]'));
   assert.ok(!text.startsWith('\n'), 'no leading blank line left behind');
 });
 
 // --------------------------------------------------------------------------
-// .claude/settings.json — graft's fragments inside a file the user owns
+// .claude/settings.json — symgraph's fragments inside a file the user owns
 // --------------------------------------------------------------------------
 
-test('graft settings fragments are removed and the user\'s own settings kept', () => {
+test('symgraph settings fragments are removed and the user\'s own settings kept', () => {
   const d = fresh();
   const settings = write(d, join('.claude', 'settings.json'), JSON.stringify({
-    statusLine: { type: 'command', command: 'node ".claude/helpers/graft-statusline.cjs"' },
+    statusLine: { type: 'command', command: 'node ".claude/helpers/symgraph-statusline.cjs"' },
     hooks: {
       PostToolUse: [
-        { matcher: 'Write', hooks: [{ type: 'command', command: 'node graft-hooks.cjs post-edit' }] },
+        { matcher: 'Write', hooks: [{ type: 'command', command: 'node symgraph-hooks.cjs post-edit' }] },
         { matcher: 'Bash', hooks: [{ type: 'command', command: 'my-own-hook.sh' }] },
       ],
-      Stop: [{ hooks: [{ type: 'command', command: 'node graft-hooks.cjs stop' }] }],
+      Stop: [{ hooks: [{ type: 'command', command: 'node symgraph-hooks.cjs stop' }] }],
     },
-    footerLinksRegexes: ['graft/[\\w./-]+\\.md', 'docs/.*'],
-    permissions: { allow: ['Bash(graft:*)', 'Bash(ls:*)'] },
+    footerLinksRegexes: ['symgraph/[\\w./-]+\\.md', 'docs/.*'],
+    permissions: { allow: ['Bash(symgraph:*)', 'Bash(ls:*)'] },
     model: 'opus',
   }));
   runRetract(d, { apply: true, global: false });
   const root = JSON.parse(readFileSync(settings, 'utf8'));
 
-  assert.equal(root.statusLine, undefined, 'graft statusline gone');
-  assert.equal(root.hooks.Stop, undefined, 'graft-only event dropped entirely');
+  assert.equal(root.statusLine, undefined, 'symgraph statusline gone');
+  assert.equal(root.hooks.Stop, undefined, 'symgraph-only event dropped entirely');
   assert.equal(root.hooks.PostToolUse.length, 1);
   assert.equal(root.hooks.PostToolUse[0].hooks[0].command, 'my-own-hook.sh', 'foreign hook kept');
   assert.deepEqual(root.footerLinksRegexes, ['docs/.*']);
@@ -144,11 +144,11 @@ test('graft settings fragments are removed and the user\'s own settings kept', (
   assert.equal(root.model, 'opus', 'unrelated settings untouched');
 });
 
-test('an older statusline shape is still recognized as graft\'s own', () => {
+test('an older statusline shape is still recognized as symgraph\'s own', () => {
   const d = fresh();
   // A hypothetical v4 command: different wrapper, same shim path.
   const settings = write(d, join('.claude', 'settings.json'), JSON.stringify({
-    statusLine: { type: 'command', command: 'sh -c \'node .claude/helpers/graft-statusline.cjs\'' },
+    statusLine: { type: 'command', command: 'sh -c \'node .claude/helpers/symgraph-statusline.cjs\'' },
   }));
   const r = byPath(runRetract(d, { apply: true, global: false }));
   assert.equal(r.get(settings), 'deleted', 'matched by shim path, not string equality');
@@ -168,23 +168,33 @@ test('a statusline the user actually wrote is left alone', () => {
 // the cache + ignore entries
 // --------------------------------------------------------------------------
 
-test('graft/ and its ignore entries go, and the user\'s ignores stay', () => {
+test('symgraph/ and its ignore entries go, and the user\'s ignores stay', () => {
   const d = fresh();
-  mkdirSync(join(d, 'graft'), { recursive: true });
-  writeFileSync(join(d, 'graft', 'INDEX.md'), '# index\n');
-  const gitignore = write(d, '.gitignore', 'node_modules/\ndist/\n\n# graft\'s local graph cache — regenerable, not committed (run `graft build`).\n/graft/\n');
+  mkdirSync(join(d, 'symgraph'), { recursive: true });
+  writeFileSync(join(d, 'symgraph', 'INDEX.md'), '# index\n');
+  const gitignore = write(d, '.gitignore', 'node_modules/\ndist/\n\n# symgraph\'s local graph cache — regenerable, not committed (run `symgraph build`).\n/symgraph/\n');
   runRetract(d, { apply: true, global: false });
-  assert.ok(!existsSync(join(d, 'graft')));
+  assert.ok(!existsSync(join(d, 'symgraph')));
   assert.equal(readFileSync(gitignore, 'utf8'), 'node_modules/\ndist/\n');
 });
 
-test('--keep-cache leaves graft/ and .gitignore untouched', () => {
+test('the .ignore block goes whole, including its two-line comment', () => {
   const d = fresh();
-  mkdirSync(join(d, 'graft'), { recursive: true });
-  const gitignore = write(d, '.gitignore', '/graft/\n');
+  const ignore = write(d, '.ignore', 'vendor/\n\n' +
+    "# symgraph's cards are gitignored but should stay greppable: ripgrep reads\n" +
+    '# .ignore before .gitignore, so this re-admits the tree to search only.\n' +
+    '!symgraph/\nsymgraph/.cache/\nsymgraph/.graph/\n');
+  runRetract(d, { apply: true, global: false });
+  assert.equal(readFileSync(ignore, 'utf8'), 'vendor/\n');
+});
+
+test('--keep-cache leaves symgraph/ and .gitignore untouched', () => {
+  const d = fresh();
+  mkdirSync(join(d, 'symgraph'), { recursive: true });
+  const gitignore = write(d, '.gitignore', '/symgraph/\n');
   runRetract(d, { apply: true, global: false, cache: false });
-  assert.ok(existsSync(join(d, 'graft')), 'cache kept');
-  assert.equal(readFileSync(gitignore, 'utf8'), '/graft/\n');
+  assert.ok(existsSync(join(d, 'symgraph')), 'cache kept');
+  assert.equal(readFileSync(gitignore, 'utf8'), '/symgraph/\n');
 });
 
 // --------------------------------------------------------------------------
@@ -193,7 +203,7 @@ test('--keep-cache leaves graft/ and .gitignore untouched', () => {
 
 test('planRetract is pure — it reports without touching anything', () => {
   const d = fresh();
-  const rule = write(d, join('.cursor', 'rules', 'graft.mdc'), 'stale\n');
+  const rule = write(d, join('.cursor', 'rules', 'symgraph.mdc'), 'stale\n');
   const agents = write(d, 'AGENTS.md', `notes\n\n${BLOCK}\n`);
   const plan = planRetract(d, { global: false });
 
@@ -215,10 +225,10 @@ test('a full init is fully retractable, and retraction is idempotent', () => {
   // Everything init wrote for those hosts is gone.
   for (const rel of [
     join('.claude', 'settings.json'),
-    join('.claude', 'helpers', 'graft-statusline.cjs'),
-    join('.claude', 'helpers', 'graft-hooks.cjs'),
-    join('.claude', 'skills', 'graft', 'SKILL.md'),
-    join('.cursor', 'rules', 'graft.mdc'),
+    join('.claude', 'helpers', 'symgraph-statusline.cjs'),
+    join('.claude', 'helpers', 'symgraph-hooks.cjs'),
+    join('.claude', 'skills', 'symgraph', 'SKILL.md'),
+    join('.cursor', 'rules', 'symgraph.mdc'),
     '.mcp.json',
   ]) {
     assert.ok(!existsSync(join(d, rel)), `${rel} should be gone`);
@@ -231,8 +241,8 @@ test('a full init is fully retractable, and retraction is idempotent', () => {
 
 test('exclude spares the hosts init is about to rewrite', () => {
   const d = fresh();
-  const cursor = write(d, join('.cursor', 'rules', 'graft.mdc'), 'cursor\n');
-  const kiro = write(d, join('.kiro', 'steering', 'graft.md'), 'kiro\n');
+  const cursor = write(d, join('.cursor', 'rules', 'symgraph.mdc'), 'cursor\n');
+  const kiro = write(d, join('.kiro', 'steering', 'symgraph.md'), 'kiro\n');
   runRetract(d, { apply: true, global: false, exclude: ['cursor'] });
   assert.ok(existsSync(cursor), 'selected host kept');
   assert.ok(!existsSync(kiro), 'unselected host retracted');
@@ -241,21 +251,21 @@ test('exclude spares the hosts init is about to rewrite', () => {
 test('--no-global never reaches outside the repo', () => {
   const d = fresh();
   const home = fresh();
-  // A machine-level Codex install with graft's hook shim in it.
-  write(home, join('.codex', 'hooks', 'graft', 'graft-hooks.cjs'), 'shim\n');
+  // A machine-level Codex install with symgraph's hook shim in it.
+  write(home, join('.codex', 'hooks', 'symgraph', 'symgraph-hooks.cjs'), 'shim\n');
   const rs = runRetract(d, { apply: true, home, global: false });
   assert.equal(rs.filter((r) => r.scope === 'global').length, 0, 'no global targets even considered');
-  assert.ok(existsSync(join(home, '.codex', 'hooks', 'graft', 'graft-hooks.cjs')));
+  assert.ok(existsSync(join(home, '.codex', 'hooks', 'symgraph', 'symgraph-hooks.cjs')));
 });
 
-test('global sweep strips graft hook entries from Codex hooks.json, keeping foreign ones', () => {
+test('global sweep strips symgraph hook entries from Codex hooks.json, keeping foreign ones', () => {
   const d = fresh();
   const home = fresh();
   mkdirSync(join(home, '.codex'), { recursive: true });
   const cfg = write(home, join('.codex', 'hooks.json'), JSON.stringify({
     hooks: {
       PostToolUse: [
-        { hooks: [{ type: 'command', command: 'node "/x/graft-hooks.cjs" post-edit' }] },
+        { hooks: [{ type: 'command', command: 'node "/x/symgraph-hooks.cjs" post-edit' }] },
         { hooks: [{ type: 'command', command: 'their-hook.sh' }] },
       ],
     },
@@ -268,9 +278,9 @@ test('global sweep strips graft hook entries from Codex hooks.json, keeping fore
 
 test('emptied directories are pruned, not left hollow', () => {
   const d = fresh();
-  write(d, join('.claude', 'skills', 'graft', 'SKILL.md'), 'skill\n');
+  write(d, join('.claude', 'skills', 'symgraph', 'SKILL.md'), 'skill\n');
   runRetract(d, { apply: true, global: false });
-  assert.ok(!existsSync(join(d, '.claude', 'skills', 'graft')), 'graft/ skill dir pruned');
+  assert.ok(!existsSync(join(d, '.claude', 'skills', 'symgraph')), 'symgraph/ skill dir pruned');
   assert.ok(!existsSync(join(d, '.claude', 'skills')), 'now-empty skills/ pruned too');
 });
 
@@ -278,17 +288,17 @@ test('emptied directories are pruned, not left hollow', () => {
 // the two append-only writers, now converging
 // --------------------------------------------------------------------------
 
-test('a stale [mcp_servers.graft] is replaced, not skipped', () => {
+test('a stale [mcp_servers.symgraph] is replaced, not skipped', () => {
   const d = fresh();
   const cfg = write(d, join('.grok', 'config.toml'),
-    '[mcp_servers.keepme]\ncommand = "y"\n\n[mcp_servers.graft]\ncommand = "OLD-BINARY"\nargs = ["stale"]\n');
+    '[mcp_servers.keepme]\ncommand = "y"\n\n[mcp_servers.symgraph]\ncommand = "OLD-BINARY"\nargs = ["stale"]\n');
   const [w] = registerMcpConfigs(d, ['grok'], { home: d });
 
   assert.equal(w.action, 'updated', 'an existing section used to freeze the launch command');
   const text = readFileSync(cfg, 'utf8');
   assert.ok(!text.includes('OLD-BINARY'), 'stale command gone');
   assert.ok(text.includes('[mcp_servers.keepme]'), 'foreign table preserved');
-  assert.equal((text.match(/\[mcp_servers\.graft\]/g) ?? []).length, 1, 'exactly one graft section');
+  assert.equal((text.match(/\[mcp_servers\.symgraph\]/g) ?? []).length, 1, 'exactly one symgraph section');
 
   // Second run is a no-op, not a churn.
   assert.equal(registerMcpConfigs(d, ['grok'], { home: d })[0].action, 'unchanged');
@@ -296,27 +306,27 @@ test('a stale [mcp_servers.graft] is replaced, not skipped', () => {
 });
 
 test('a renamed allowlist entry is dropped; the user\'s own rules stay', () => {
-  const { merged } = mergeGraftSettings({
-    permissions: { allow: ['Bash(graft-dev:*)', 'Bash(ls:*)', 'Bash(graft-mytool:*)'] },
+  const { merged } = mergeSymgraphSettings({
+    permissions: { allow: ['Bash(symgraph-dev:*)', 'Bash(ls:*)', 'Bash(symgraph-mytool:*)'] },
   });
   const allow: string[] = merged.permissions.allow;
   assert.ok(allow.includes('Bash(ls:*)'), 'unrelated rule kept');
-  assert.ok(allow.includes('Bash(graft-mytool:*)'), 'the user\'s own graft-prefixed rule kept');
-  assert.equal(allow.filter((a) => a === 'Bash(graft-dev:*)').length, 1, 'no duplicate of graft\'s own entry');
+  assert.ok(allow.includes('Bash(symgraph-mytool:*)'), 'the user\'s own symgraph-prefixed rule kept');
+  assert.equal(allow.filter((a) => a === 'Bash(symgraph-dev:*)').length, 1, 'no duplicate of symgraph\'s own entry');
 });
 
 test('a superseded footer regex is replaced rather than stacked', () => {
-  const { merged } = mergeGraftSettings({
-    footerLinksRegexes: ['graft/OLD-PATTERN\\.md', 'docs/.*'],
+  const { merged } = mergeSymgraphSettings({
+    footerLinksRegexes: ['symgraph/OLD-PATTERN\\.md', 'docs/.*'],
   });
-  assert.ok(!merged.footerLinksRegexes.includes('graft/OLD-PATTERN\\.md'), 'old graft pattern gone');
+  assert.ok(!merged.footerLinksRegexes.includes('symgraph/OLD-PATTERN\\.md'), 'old symgraph pattern gone');
   assert.ok(merged.footerLinksRegexes.includes('docs/.*'), 'user pattern kept');
-  assert.equal(merged.footerLinksRegexes.filter((r: string) => r.startsWith('graft/')).length, 1);
+  assert.equal(merged.footerLinksRegexes.filter((r: string) => r.startsWith('symgraph/')).length, 1);
 });
 
-test('mergeGraftSettings stays idempotent over repeated runs', () => {
-  const once = mergeGraftSettings({}).merged;
-  const twice = mergeGraftSettings(structuredClone(once)).merged;
+test('mergeSymgraphSettings stays idempotent over repeated runs', () => {
+  const once = mergeSymgraphSettings({}).merged;
+  const twice = mergeSymgraphSettings(structuredClone(once)).merged;
   assert.deepEqual(twice, once, 'a re-init must not grow the file');
 });
 
@@ -325,13 +335,14 @@ test('a shared AGENTS.md is spared when any host that writes it is kept', () => 
   // Three registry hosts name AGENTS.md: agents, hermes, antigravity.
   const agents = write(d, 'AGENTS.md', `# Notes\n\n${BLOCK}\n`);
   runRetract(d, { apply: true, global: false, exclude: ['agents'] });
-  assert.ok(readFileSync(agents, 'utf8').includes('graft:start'),
+  assert.ok(readFileSync(agents, 'utf8').includes('symgraph:start'),
     'hermes/antigravity must not strip the block that the kept `agents` host owns');
 });
 
 test('hosts sharing one path produce a single retraction, not one each', () => {
   const d = fresh();
   const agents = write(d, 'AGENTS.md', `# Notes\n\n${BLOCK}\n`);
-  const rs = runRetract(d, { global: false }).filter((r) => r.path === agents);
+  // graft's (pre-rename) fences are a separate target on the same file — count symgraph's.
+  const rs = runRetract(d, { global: false }).filter((r) => r.path === agents && !r.legacy);
   assert.equal(rs.length, 1, `AGENTS.md should be queued once, got ${rs.length}`);
 });

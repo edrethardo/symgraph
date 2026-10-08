@@ -53,7 +53,7 @@ useDollar <- function(obj) {
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-r-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-r-"));
   writeFileSync(join(dir, "main.R"), MAIN_R);
   writeFileSync(join(dir, "helpers.R"), "noop <- function() { NULL }\n");
   return dir;
@@ -68,7 +68,7 @@ test("R extraction: left-assign, =-assign, and right-assign function definitions
   try {
     const result = await buildGraph(dir);
     assert.ok(result.languages.includes("r"), "languages should include r");
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     const foo = nodeById(graph, "main.R#foo");
     assert.equal(foo?.kind, "function");
@@ -95,7 +95,7 @@ test("R extraction: leading-dot naming convention marks a function unexported", 
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     assert.equal(nodeById(graph, "main.R#.helper")?.exported, false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -106,7 +106,7 @@ test("R extraction: an anonymous callback function is NOT emitted as a node", as
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     // Every real definition in the fixture, no more, no fewer — the anonymous
     // `function(n) n + 1` passed to lapply() must not sneak in as an 8th.
@@ -125,7 +125,7 @@ test("R extraction: library()/require()/source() become imports edges", async ()
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     assert.ok(
       graph.edges.some((e) => e.relation === "imports" && e.source === "main.R" && e.target === "dplyr"),
@@ -156,7 +156,7 @@ test("R extraction: qualified (pkg::fn) and member-style ($) calls resolve by ba
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     const qualifiedCall = graph.edges.find(
       (e) => e.relation === "calls" && e.source === "main.R#useQualified" && e.target === "main.R#sibling",
@@ -176,7 +176,7 @@ test("R extraction: contains edges (file -> function)", async () => {
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     const foo = nodeById(graph, "main.R#foo")!;
     assert.ok(

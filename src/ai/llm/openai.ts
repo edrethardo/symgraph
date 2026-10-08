@@ -4,7 +4,7 @@
  * Groq, Together, DeepSeek, a local server, …) — the user picks the endpoint
  * with `baseUrl` and authenticates with their own key.
  *
- * This adapter reproduces graft's historical wire behavior exactly: temperature
+ * This adapter reproduces symgraph's historical wire behavior exactly: temperature
  * is forwarded, cache breakpoints become `cache_control` content parts (which
  * OpenRouter forwards to Anthropic), and cached tokens are subtracted out of the
  * input count so {@link Usage.input} is uncached-only.

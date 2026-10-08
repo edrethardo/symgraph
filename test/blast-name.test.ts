@@ -65,7 +65,7 @@ function stubNamer(answers: Record<string, string>): Namer & { calls: Cluster[][
   };
 }
 
-const dir = () => mkdtempSync(join(tmpdir(), "graft-name-"));
+const dir = () => mkdtempSync(join(tmpdir(), "symgraph-name-"));
 
 test("blast name: a cluster is keyed by content, so unchanged code is never renamed", () => {
   const files = ["src/a.ts", "src/b.ts"];

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { installCodexHooks } from '../src/hosts/codex-hooks.js';
 import { editedFilePath } from '../src/claude/hooks.js';
 
-function fresh(): string { return mkdtempSync(join(tmpdir(), 'graft-cxhooks-')); }
+function fresh(): string { return mkdtempSync(join(tmpdir(), 'symgraph-cxhooks-')); }
 
 /**
  * Windows has no POSIX exec bit — `statSync().mode & 0o111` is always 0 there, and
@@ -32,7 +32,7 @@ test('writes shim + hooks.json entry, idempotent on re-run', () => {
   mkdirSync(join(home, '.codex'), { recursive: true });
   const w = installCodexHooks(home);
   assert.equal(w.length, 2);
-  const shim = join(home, '.codex', 'hooks', 'graft', 'graft-hooks.cjs');
+  const shim = join(home, '.codex', 'hooks', 'symgraph', 'symgraph-hooks.cjs');
   assertRunnableShim(shim, 'shim is executable');
   const cfg = JSON.parse(readFileSync(join(home, '.codex', 'hooks.json'), 'utf8'));
   // Full Claude-Code parity: retrieval on prompt, orientation on start, blast
@@ -55,21 +55,21 @@ test('writes shim + hooks.json entry, idempotent on re-run', () => {
     assert.equal(after.hooks[ev].length, 1, `${ev} not duplicated on re-run`);
 });
 
-test('foreign hook entries are preserved; stale graft entries replaced', () => {
+test('foreign hook entries are preserved; stale symgraph entries replaced', () => {
   const home = fresh();
   mkdirSync(join(home, '.codex'), { recursive: true });
   writeFileSync(join(home, '.codex', 'hooks.json'), JSON.stringify({
     hooks: { PostToolUse: [
       { matcher: 'Bash', hooks: [{ type: 'command', command: 'other-tool' }] },
-      { matcher: 'Write', hooks: [{ type: 'command', command: 'node /old/graft-hooks.cjs post-edit' }] },
+      { matcher: 'Write', hooks: [{ type: 'command', command: 'node /old/symgraph-hooks.cjs post-edit' }] },
     ] },
   }));
   installCodexHooks(home);
   const entries = JSON.parse(readFileSync(join(home, '.codex', 'hooks.json'), 'utf8')).hooks.PostToolUse;
-  assert.equal(entries.length, 2, 'foreign kept, stale graft replaced by fresh');
+  assert.equal(entries.length, 2, 'foreign kept, stale symgraph replaced by fresh');
   assert.ok(entries.some((e: any) => e.hooks[0].command === 'other-tool'), 'foreign entry preserved');
-  assert.ok(entries.some((e: any) => /graft-hooks\.cjs" post-edit$/.test(e.hooks[0].command)), 'fresh graft entry present');
-  assert.ok(!JSON.stringify(entries).includes('/old/'), 'stale graft entry removed');
+  assert.ok(entries.some((e: any) => /symgraph-hooks\.cjs" post-edit$/.test(e.hooks[0].command)), 'fresh symgraph entry present');
+  assert.ok(!JSON.stringify(entries).includes('/old/'), 'stale symgraph entry removed');
 });
 
 test('editedFilePath reads the touched file from BOTH host edit-tool shapes', () => {
@@ -115,7 +115,7 @@ test('re-heals shim exec bit when a prior install had its mode stripped', () => 
   const home = fresh();
   mkdirSync(join(home, '.codex'), { recursive: true });
   installCodexHooks(home);
-  const shim = join(home, '.codex', 'hooks', 'graft', 'graft-hooks.cjs');
+  const shim = join(home, '.codex', 'hooks', 'symgraph', 'symgraph-hooks.cjs');
   if (HAS_EXEC_BIT) {
     chmodSync(shim, 0o644);
     assert.ok(!(statSync(shim).mode & 0o111), 'exec bit stripped before re-run');

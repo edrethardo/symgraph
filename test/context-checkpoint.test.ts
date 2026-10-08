@@ -15,7 +15,7 @@ import type { Summarizer } from "../src/ai/summarize.js";
 
 const rmDir = (dir: string): void => rmSync(dir, { recursive: true, force: true });
 
-const cachePath = (dir: string): string => join(dir, "graft", ".cache", "summaries.json");
+const cachePath = (dir: string): string => join(dir, "symgraph", ".cache", "summaries.json");
 
 function fixture(n: number): string {
   const dir = mkdtempSync(join(tmpdir(), "ctxflush-"));
@@ -34,8 +34,8 @@ function diskSummaryCount(dir: string): number {
 
 test("phase-1 summaries flush to disk mid-run, so an interrupted build resumes", async () => {
   const dir = fixture(4);
-  const prev = process.env.GRAFT_SUMMARY_CHECKPOINT_MS;
-  process.env.GRAFT_SUMMARY_CHECKPOINT_MS = "0"; // flush after every file
+  const prev = process.env.SYMGRAPH_SUMMARY_CHECKPOINT_MS;
+  process.env.SYMGRAPH_SUMMARY_CHECKPOINT_MS = "0"; // flush after every file
   let calls = 0;
   let diskAtThird = -1;
   const summarizer: Summarizer = {
@@ -58,8 +58,8 @@ test("phase-1 summaries flush to disk mid-run, so an interrupted build resumes",
     assert.equal(calls, 4);
     assert.ok(diskAtThird >= 2, `expected ≥2 summaries flushed before the 3rd file, saw ${diskAtThird}`);
   } finally {
-    if (prev === undefined) delete process.env.GRAFT_SUMMARY_CHECKPOINT_MS;
-    else process.env.GRAFT_SUMMARY_CHECKPOINT_MS = prev;
+    if (prev === undefined) delete process.env.SYMGRAPH_SUMMARY_CHECKPOINT_MS;
+    else process.env.SYMGRAPH_SUMMARY_CHECKPOINT_MS = prev;
     rmDir(dir);
   }
 });

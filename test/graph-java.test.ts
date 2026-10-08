@@ -8,7 +8,7 @@
  * each one is invisible to the other languages' fixtures:
  *
  *   - `method_invocation` has NO `function` field (it splits the callee into
- *     `object` + `name`), unlike every other grammar graft parses.
+ *     `object` + `name`), unlike every other grammar symgraph parses.
  *   - Java has no free functions, so an implicit-`this` call (`decorate(x)`) is a
  *     METHOD call. Resolved against the function index it would vanish — and it is
  *     the most common intra-class edge there is.
@@ -96,7 +96,7 @@ public final class App extends Base implements Greeter {
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-"));
   mkdirSync(join(dir, PKG), { recursive: true });
   writeFileSync(join(dir, PKG, "Greeter.java"), GREETER);
   writeFileSync(join(dir, PKG, "Base.java"), BASE);
@@ -119,7 +119,7 @@ test("Java extraction: classes, interfaces, enums, records, methods, constructor
     const result = await buildGraph(dir); // $0, Tier-1 only
     assert.ok(result.languages.includes("java"), "languages should include java");
 
-    const graph = readGraph(wiringPath(join(dir, "graft")));
+    const graph = readGraph(wiringPath(join(dir, "symgraph")));
     assert.ok(graph, "wiring graph should be written");
 
     assert.equal(nodeById(graph!, `${APP_JAVA}#App`)?.kind, "class");
@@ -143,7 +143,7 @@ test("Java extraction: visibility comes from the modifier list, not the name", a
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     assert.equal(nodeById(graph, `${APP_JAVA}#App`)?.exported, true, "public class");
     assert.equal(nodeById(graph, `${APP_JAVA}#App.greet`)?.exported, true, "public method");
@@ -171,7 +171,7 @@ test("Java extraction: call edges — implicit `this`, typed field receiver, con
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const calls = graph.edges.filter((e) => e.relation === "calls");
 
     // Implicit-`this`: `decorate(name)` names no receiver but IS a method call.
@@ -212,7 +212,7 @@ test("Java extraction: a `var local = new Store()` member call resolves via the 
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const calls = graph.edges.filter((e) => e.relation === "calls");
 
     assert.ok(
@@ -236,7 +236,7 @@ test("Java extraction: extends and implements", async () => {
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     assert.ok(
       graph.edges.some(
@@ -265,7 +265,7 @@ test("Java extraction: imports resolve by package path; external types stay stri
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const imports = graph.edges.filter((e) => e.relation === "imports" && e.source === APP_JAVA);
 
     // A Java import names a TYPE and states no source root, so resolution matches the
@@ -286,7 +286,7 @@ test("Java extraction: imports resolve by package path; external types stay stri
 });
 
 test("Java extraction: a static-member import resolves to its enclosing type", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-static-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-static-"));
   try {
     mkdirSync(join(dir, PKG), { recursive: true });
     writeFileSync(
@@ -299,7 +299,7 @@ test("Java extraction: a static-member import resolves to its enclosing type", a
     );
 
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     // `com.acme.Util.twice` names a member; the file is the enclosing type's.
     assert.ok(
@@ -320,7 +320,7 @@ test("Java extraction: an ambiguous package suffix stays unresolved rather than 
   // The same fully-qualified name under two source roots (main and a duplicated test
   // tree) gives one suffix two files. Picking one would invent an edge the source
   // does not state, so the specifier is kept.
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-ambig-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-ambig-"));
   try {
     const main = "src/main/java/com/acme";
     const test2 = "src/test/java/com/acme";
@@ -335,7 +335,7 @@ test("Java extraction: an ambiguous package suffix stays unresolved rather than 
     );
 
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     assert.ok(
       graph.edges.some(
@@ -381,7 +381,7 @@ public final class Svc {
 `;
 
 function overloadFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-overload-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-overload-"));
   mkdirSync(join(dir, PKG), { recursive: true });
   writeFileSync(join(dir, PKG, "Svc.java"), OVERLOADS);
   return dir;
@@ -391,11 +391,11 @@ test("Java overloads: a delegating call resolves to the other overload, not itse
   // Before arity was recorded, both `join` nodes were candidates, the same-file
   // tiebreak picked the first, and the 2-arg method got a `calls` edge to ITSELF —
   // marked `extracted`, i.e. confidently wrong. Overloading exists in none of the
-  // other languages graft parses, so no existing fixture could have caught this.
+  // other languages symgraph parses, so no existing fixture could have caught this.
   const dir = overloadFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const svc = `${PKG}/Svc.java`;
     const calls = graph.edges.filter((e) => e.relation === "calls");
 
@@ -418,7 +418,7 @@ test("Java overloads: a variadic candidate is never filtered out by argument cou
   const dir = overloadFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const svc = `${PKG}/Svc.java`;
 
     const variadic = graph.nodes.find((n) => n.id === `${svc}#Svc.log~2`);
@@ -444,7 +444,7 @@ test("Java overloads: same-arity overloads stay unresolved rather than guessing"
   const dir = overloadFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const svc = `${PKG}/Svc.java`;
 
     const a = graph.nodes.find((n) => n.id === `${svc}#Svc.render`);
@@ -543,7 +543,7 @@ public final class Uses {
 `;
 
 function genericFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-generic-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-generic-"));
   mkdirSync(join(dir, PKG), { recursive: true });
   writeFileSync(join(dir, PKG, "Box.java"), GENERIC_BOX);
   writeFileSync(join(dir, PKG, "File.java"), LOCAL_FILE);
@@ -567,7 +567,7 @@ test("Java construction: a generic `new` reaches the same type node as a raw one
   const dir = genericFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const box = `${PKG}/Box.java#Box`;
     const uses = `${PKG}/Uses.java`;
     const calls = graph.edges.filter((e) => e.relation === "calls" && e.target === box);
@@ -590,7 +590,7 @@ test("Java construction: a QUALIFIED `new` resolves to nothing, not to a same-na
   const dir = genericFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const calls = graph.edges.filter((e) => e.relation === "calls");
 
     assert.ok(
@@ -617,7 +617,7 @@ test("Java construction: a nested `new` does not bind to a sibling of the same s
   const dir = genericFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const api = `${PKG}/Api.java`;
     const ctor = graph.edges.filter(
       (e) =>
@@ -694,7 +694,7 @@ public class Bindings {
 `;
 
 function makeBindingsFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-bind-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-bind-"));
   mkdirSync(join(dir, PKG), { recursive: true });
   writeFileSync(join(dir, PKG, "Worker.java"), BINDINGS_SRC);
   writeFileSync(join(dir, PKG, "Store.java"), STORE);
@@ -716,7 +716,7 @@ test("Java bindings: a varargs parameter binds its name to the element type", as
   const dir = makeBindingsFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const badCall = graph.edges.find(
       (e) =>
         e.relation === "calls" &&
@@ -735,7 +735,7 @@ test("Java bindings: try-with-resources binds the resource variable (explicit ty
   const dir = makeBindingsFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const call = graph.edges.find(
       (e) =>
         e.relation === "calls" &&
@@ -754,7 +754,7 @@ test("Java bindings: try-with-resources binds the resource variable (`var` + ini
   // fixture (no typed-TWR, no enhanced-for, no var-local on Worker) isolates
   // the var-TWR path: the only Worker.run edge that can fire is the one through
   // `r`, so its presence proves the var fallback bound `r` to `Worker`.
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-var-twr-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-var-twr-"));
   try {
     mkdirSync(join(dir, PKG), { recursive: true });
     writeFileSync(
@@ -773,7 +773,7 @@ public class VarTwr {
 }`,
     );
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const call = graph.edges.find(
       (e) =>
         e.relation === "calls" &&
@@ -792,7 +792,7 @@ test("Java bindings: enhanced-for binds the loop variable to the element type", 
   const dir = makeBindingsFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const call = graph.edges.find(
       (e) =>
         e.relation === "calls" &&
@@ -815,7 +815,7 @@ test("Java bindings: a catch parameter binds its name to the caught type", async
   const dir = makeBindingsFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const badCall = graph.edges.find(
       (e) =>
         e.relation === "calls" &&
@@ -836,7 +836,7 @@ test("Java bindings: an array-typed field binds to the element type", async () =
   const dir = makeBindingsFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     assert.ok(graph.nodes.some((n) => n.id === `${BIND_FILE}#Bindings`), "Bindings class node exists");
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -851,7 +851,7 @@ test("Java bindings: a field with no declared type binds via its `new X()` initi
   const dir = makeBindingsFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const ctorEdge = graph.edges.find(
       (e) =>
         e.relation === "calls" &&
@@ -870,7 +870,7 @@ test("Java extraction: annotation type element declarations are method-kind node
   // `annotation_type_element_declaration`, so the element method was missing
   // from the graph. The element is a method-like declaration (`String value()
   // default "1"`), so it takes `method` kind.
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-anno-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-anno-"));
   try {
     mkdirSync(join(dir, PKG), { recursive: true });
     writeFileSync(
@@ -878,7 +878,7 @@ test("Java extraction: annotation type element declarations are method-kind node
       "package com.acme;\n\npublic @interface Version {\n  String value() default \"1\";\n  int count() default 0;\n}\n",
     );
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     const anno = nodeById(graph, `${PKG}/Version.java#Version`);
     assert.equal(anno?.kind, "interface", "@interface maps to interface kind");
@@ -902,7 +902,7 @@ test("Java scopes: pom.xml, build.gradle, and build.gradle.kts are project marke
   // should include the marker file.
   const { discoverScopes } = await import("../src/graph/scopes.js");
   for (const marker of ["pom.xml", "build.gradle", "build.gradle.kts"] as const) {
-    const dir = mkdtempSync(join(tmpdir(), "graft-java-scope-"));
+    const dir = mkdtempSync(join(tmpdir(), "symgraph-java-scope-"));
     try {
       mkdirSync(join(dir, "backend"), { recursive: true });
       writeFileSync(join(dir, "backend", marker), "");
@@ -972,7 +972,7 @@ public final class Impl implements Outer.Inner {}
 `;
 
 function heritageFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-heritage-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-heritage-"));
   mkdirSync(join(dir, PKG), { recursive: true });
   writeFileSync(join(dir, PKG, "Item.java"), HER_ITEM);
   writeFileSync(join(dir, PKG, "Base.java"), HER_BASE);
@@ -990,7 +990,7 @@ test("Java heritage: a type ARGUMENT is not a supertype", async () => {
   const dir = heritageFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const from = `${PKG}/Child.java#Child`;
     const her = graph.edges.filter(
       (e) => (e.relation === "extends" || e.relation === "implements") && e.source === from,
@@ -1020,7 +1020,7 @@ test("Java heritage: a bogus supertype no longer poisons call resolution", async
   const dir = heritageFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     assert.ok(
       !graph.edges.some(
@@ -1042,7 +1042,7 @@ test("Java heritage: a type VARIABLE is never a supertype", async () => {
   const dir = heritageFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const from = `${PKG}/Holder.java#Holder`;
     const her = graph.edges.filter(
       (e) => (e.relation === "extends" || e.relation === "implements") && e.source === from,
@@ -1065,7 +1065,7 @@ test("Java heritage: a QUALIFIED supertype keeps its whole name", async () => {
   const dir = heritageFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const her = graph.edges.filter(
       (e) => e.relation === "implements" && e.source === `${PKG}/Impl.java#Impl`,
     );
@@ -1103,13 +1103,13 @@ test("resolveName: a same-file name matching two nodes resolves to neither", asy
   // required a unique match. A file with `AlphaB.Builder` and `BetaB.Builder` therefore
   // got a silent first-wins guess for a bare `new Builder()`. Language-agnostic: the
   // fixture is Java only because that is where it was found.
-  const dir = mkdtempSync(join(tmpdir(), "graft-resolve-ambig-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-resolve-ambig-"));
   try {
     mkdirSync(join(dir, PKG), { recursive: true });
     writeFileSync(join(dir, PKG, "Api.java"), AMBIG);
 
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const guesses = graph.edges.filter(
       (e) =>
         e.relation === "calls" &&
@@ -1177,7 +1177,7 @@ public final class Service {
 `;
 
 function receiverFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-receiver-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-receiver-"));
   mkdirSync(join(dir, PKG), { recursive: true });
   writeFileSync(join(dir, PKG, "Repo.java"), RCV_REPO);
   writeFileSync(join(dir, PKG, "Helper.java"), RCV_HELPER);
@@ -1192,7 +1192,7 @@ test("Java receivers: `this.field.method()` resolves through the field's declare
   const dir = receiverFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const calls = graph.edges.filter((e) => e.relation === "calls");
 
     assert.ok(
@@ -1222,7 +1222,7 @@ test("Java receivers: an explicit `this.method()` resolves to the enclosing type
   const dir = receiverFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     assert.ok(
       graph.edges.some(
@@ -1246,7 +1246,7 @@ test("Java receivers: an unrecognised receiver shape resolves to nothing", async
   const dir = receiverFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     assert.deepEqual(
       graph.edges.filter(
@@ -1301,7 +1301,7 @@ public final class App {
 `;
 
 function anonOwnerFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-anon-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-anon-"));
   mkdirSync(join(dir, PKG), { recursive: true });
   writeFileSync(join(dir, PKG, "Greeter.java"), ANON_GREETER);
   writeFileSync(join(dir, PKG, "App.java"), ANON_APP);
@@ -1312,7 +1312,7 @@ test("Java anonymous class: methods do not take the enclosing type's owner (#161
   const dir = anonOwnerFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const file = `${PKG}/App.java`;
 
     const anon = nodeById(graph, `${file}#App.make.{anonymous}`);
@@ -1392,7 +1392,7 @@ public class Entity {}
 `;
 
 function annotationFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-annoref-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-annoref-"));
   mkdirSync(join(dir, PKG), { recursive: true });
   mkdirSync(join(dir, "src/main/java/com/other"), { recursive: true });
   writeFileSync(join(dir, PKG, "MyAnno.java"), ANNO_MYANNO);
@@ -1405,7 +1405,7 @@ test("Java extraction: in-repo annotation usage resolves to references edges (#8
   const dir = annotationFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const foo = `${PKG}/Foo.java#Foo`;
     const myAnno = `${PKG}/MyAnno.java#MyAnno`;
 
@@ -1436,7 +1436,7 @@ test("Java extraction: annotation arguments do not emit extra edges (#89)", asyn
   const dir = annotationFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const myAnno = `${PKG}/MyAnno.java#MyAnno`;
     const tagged = graph.edges.filter(
       (e) => e.relation === "references" && e.source === `${PKG}/Foo.java#Foo.tagged`,
@@ -1467,7 +1467,7 @@ test("Java extraction: external annotation keeps its bare name (#89)", async () 
   const dir = annotationFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const foo = `${PKG}/Foo.java#Foo`;
     const refs = graph.edges.filter((e) => e.relation === "references");
 
@@ -1496,7 +1496,7 @@ test("Java extraction: external @Service does not collapse onto a plain interfac
   // #103 in interface form: `@interface` and `interface` both mint kind
   // `interface`, so `@Service` (external Spring annotation) must not resolve
   // onto an in-repo `interface Service`. The edge stays a bare name.
-  const dir = mkdtempSync(join(tmpdir(), "graft-java-service-anno-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-java-service-anno-"));
   mkdirSync(join(dir, PKG), { recursive: true });
   writeFileSync(
     join(dir, PKG, "Service.java"),
@@ -1508,7 +1508,7 @@ test("Java extraction: external @Service does not collapse onto a plain interfac
   );
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
     const foo = `${PKG}/Foo.java#Foo`;
     const service = `${PKG}/Service.java#Service`;
     const refs = graph.edges.filter((e) => e.relation === "references" && e.source === foo);

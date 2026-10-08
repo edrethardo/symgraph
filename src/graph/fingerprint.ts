@@ -1,7 +1,7 @@
 /**
  * The cheap "has the working tree moved?" probe that gates the pre-query rebuild.
  *
- * Every graft retrieval call runs this, so it has to be ~free on the common
+ * Every symgraph retrieval call runs this, so it has to be ~free on the common
  * unchanged path: a walk + one `stat` per source file, no reads, no parsing.
  * Measured at ~3ms for 280 files. Only files whose `(size, mtimeMs)` disagree
  * with the last build's record get read and hashed, which is what keeps a `touch`
@@ -29,7 +29,7 @@ import { listSourceStats } from "./source-files.js";
 export const FINGERPRINT_PREFIX = "fingerprint";
 const FINGERPRINT_VERSION = 1;
 
-/** The identity this graft's prints are filed under. Unlike the extract memo, a
+/** The identity this symgraph's prints are filed under. Unlike the extract memo, a
  * missing extractor identity is *not* disqualifying here: freshness is a claim about
  * source bytes, and a build with no memo is merely cold, never wrong. So stamp what
  * we can and fall back to a shared bucket. */
@@ -50,7 +50,7 @@ export interface Fingerprint {
   extractor: string;
   files: Record<string, Print>;
   /** Repo-relative directory prefixes this build was limited to (`--only-dir`).
-   * Absent = full tree. Recorded here — not in the source repo's `.graft/config.json`
+   * Absent = full tree. Recorded here — not in the source repo's `.symgraph/config.json`
    * — so the query-path freshness probe (which never sees a CLI flag) enumerates the
    * identical whitelisted set and excluded files are never phantom "added" drift. */
   onlyDirs?: string[];
@@ -67,7 +67,7 @@ export interface Drift {
 }
 
 /** `<outDir>/.cache/fingerprint.<stamp>.json` — keyed by extractor identity for the
- * same reason the memo is (see {@link extractCachePath}): two grafts on one repo,
+ * same reason the memo is (see {@link extractCachePath}): two symgraphs on one repo,
  * typically an `npx` MCP server and a locally installed hook binary, must not keep
  * invalidating each other's prints and forcing a cold rebuild on every call. */
 export function fingerprintPath(outDir: string): string {
@@ -102,9 +102,9 @@ export function writeFingerprint(
   }
 }
 
-/** `GRAFT_REFRESH=hash` — never trust a stat, confirm every file by its bytes. */
+/** `SYMGRAPH_REFRESH=hash` — never trust a stat, confirm every file by its bytes. */
 export function alwaysHash(): boolean {
-  return process.env.GRAFT_REFRESH === "hash";
+  return process.env.SYMGRAPH_REFRESH === "hash";
 }
 
 /**
@@ -114,8 +114,8 @@ export function alwaysHash(): boolean {
  * **The probe's rule only.** `buildGraph` deliberately does not use this: it reads
  * and hashes every file, every time. A stat may decide whether a query bothers
  * rebuilding; it may not decide what the rebuild itself looks at — otherwise
- * `graft check` (which always re-hashes) can report drift that the `graft build` it
- * recommends then refuses to repair. `GRAFT_REFRESH=hash` is the escape hatch for
+ * `symgraph check` (which always re-hashes) can report drift that the `symgraph build` it
+ * recommends then refuses to repair. `SYMGRAPH_REFRESH=hash` is the escape hatch for
  * the probe's blind spot: a same-length edit inside one mtime tick.
  *
  * An empty `hash` means the last build never got the bytes — always re-read.
@@ -144,7 +144,7 @@ export function driftCount(d: Drift): number {
  * there is no fingerprint to compare against (never built, or built by a version
  * that didn't write one) — callers should treat that as "unknown", not "clean".
  *
- * `GRAFT_REFRESH=hash` skips the stat fast path and hashes every file, for the
+ * `SYMGRAPH_REFRESH=hash` skips the stat fast path and hashes every file, for the
  * rare tooling that rewrites content while preserving size and mtime.
  */
 export function probeDrift(root: string, outDir: string): Drift | null {

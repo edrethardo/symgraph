@@ -1,15 +1,15 @@
 /**
- * User-level install for Claude Code: the copy of graft's wiring that lives
+ * User-level install for Claude Code: the copy of symgraph's wiring that lives
  * outside every repo.
  *
- * Why this exists. Everything `graft init` writes for Claude Code lands *in* the
+ * Why this exists. Everything `symgraph init` writes for Claude Code lands *in* the
  * repo — `.mcp.json` and `.claude/settings.json`. A `.gitignore` is free to ignore
  * both, and `git worktree add` checks out tracked files only, so a worktree of such
- * a repo starts with graft's shims present and neither of the two files that *point
+ * a repo starts with symgraph's shims present and neither of the two files that *point
  * at* them. No settings.json means no SessionStart hook; no `.mcp.json` means no
- * tool server. graft is absent, silently, in a tree that looks correctly wired.
+ * tool server. symgraph is absent, silently, in a tree that looks correctly wired.
  *
- * graft already carries the repair for exactly that — `reconcileWiring` rewrites
+ * symgraph already carries the repair for exactly that — `reconcileWiring` rewrites
  * both files — and it is unreachable here: `runUpkeep` is called only from the hook
  * and from the MCP server, which are the two things that are missing. Seeding can't
  * help either, since it runs on the query path, which needs the server.
@@ -18,7 +18,7 @@
  * no `.gitignore` reaches it, and Claude Code reads it for every project — worktrees
  * included. Codex has been installed this way from the start (see ./codex-hooks.ts,
  * whose own note says the entries "fire in every repo opened with Codex, not just
- * this one"); Claude Code was the one host graft wired repo-only. This module closes
+ * this one"); Claude Code was the one host symgraph wired repo-only. This module closes
  * that gap, and is a deliberate mirror of that file.
  *
  * The repo-level writes stay exactly as they were. A project that has its own
@@ -29,7 +29,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { hooksShim } from '../claude/shim-template.js';
 import { claudeDistDir } from '../claude/paths.js';
-import { mergeGraftHooks } from '../claude/settings-merge.js';
+import { mergeSymgraphHooks } from '../claude/settings-merge.js';
 import { toPosixPath } from '../util/paths.js';
 import { readJsonObject, writeOwned, type ConfigWrite } from './config-write.js';
 import { mergeJsonKey, serverEntry } from './mcp-config.js';
@@ -58,19 +58,19 @@ export function claudeGlobalTargets(home: string): PlannedWrite[] {
   const g = (id: string, path: string, kind: PlannedWrite['kind'], what: string): PlannedWrite =>
     ({ hostId: 'claude', id, path, scope: 'global', kind, what });
   return [
-    g('claude-global-shim', join(globalHelpersDir(home), 'graft-hooks.cjs'), 'hook', 'hooks shim (user level)'),
+    g('claude-global-shim', join(globalHelpersDir(home), 'symgraph-hooks.cjs'), 'hook', 'hooks shim (user level)'),
     g('claude-global-hooks', join(home, '.claude', 'settings.json'), 'hook', 'SessionStart / UserPromptSubmit / PostToolUse / Stop'),
-    g('claude-global-mcp', join(home, '.claude.json'), 'mcp', 'mcpServers.graft'),
+    g('claude-global-mcp', join(home, '.claude.json'), 'mcp', 'mcpServers.symgraph'),
   ];
 }
 
-/** Merge graft's hook blocks into a settings file, preserving everything else. */
+/** Merge symgraph's hook blocks into a settings file, preserving everything else. */
 function upsertGlobalHooks(id: string, path: string, helpers: string): GlobalWrite {
   const loaded = readJsonObject(path);
   if (loaded === 'unparseable') return { id, path, action: 'skipped-unparseable' };
   const { root: existing, existed } = loaded;
   const before = JSON.stringify(existing);
-  const { merged } = mergeGraftHooks(existing, helpers);
+  const { merged } = mergeSymgraphHooks(existing, helpers);
   if (JSON.stringify(merged) === before) return { id, path, action: 'unchanged' };
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(merged, null, 2)}\n`);
@@ -88,7 +88,7 @@ function upsertGlobalHooks(id: string, path: string, helpers: string): GlobalWri
  * package's `dist/`, exactly as the Codex install does.
  *
  * Best-effort by contract, like every other writer here: a failure is reported as an
- * action, never raised, so a bad `~/.claude.json` can't fail a `graft init`.
+ * action, never raised, so a bad `~/.claude.json` can't fail a `symgraph init`.
  */
 export function installClaudeGlobal(home: string): GlobalWrite[] {
   const [shim, settings, mcp] = claudeGlobalTargets(home);
@@ -106,8 +106,8 @@ export function installClaudeGlobal(home: string): GlobalWrite[] {
   if (out[0].action !== 'skipped-unparseable') {
     try {
       // Posix form in the command string: `join` gives backslashes on Windows and
-      // the template appends `/graft-hooks.cjs`, so the raw path produces a mixed
-      // `C:\Users\…\helpers/graft-hooks.cjs`. Node accepts forward slashes on
+      // the template appends `/symgraph-hooks.cjs`, so the raw path produces a mixed
+      // `C:\Users\…\helpers/symgraph-hooks.cjs`. Node accepts forward slashes on
       // Windows, so one separator throughout is both correct and readable.
       out.push(upsertGlobalHooks(settings.id, settings.path, toPosixPath(globalHelpersDir(home))));
     } catch {

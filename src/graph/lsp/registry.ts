@@ -1,12 +1,12 @@
 /**
- * LSP server registry — maps graft language names to a language server command.
+ * LSP server registry — maps symgraph language names to a language server command.
  * Only servers whose binary is actually on PATH are eligible; a missing binary
  * simply means that language gets no LSP enrichment (the AST graph stands alone).
  */
 import { execSync } from "node:child_process";
 
 export interface LspServer {
-  /** graft language names (as produced by languageLabelOf/genericLangOf) this serves. */
+  /** symgraph language names (as produced by languageLabelOf/genericLangOf) this serves. */
   languages: string[];
   command: string;
   args: string[];

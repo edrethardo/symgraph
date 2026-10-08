@@ -52,7 +52,7 @@ func Helper() {}
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-go-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-go-"));
   writeFileSync(join(dir, "go.mod"), "module mymod\n\ngo 1.21\n");
   writeFileSync(join(dir, "main.go"), MAIN_GO);
   mkdirSync(join(dir, "pkg", "util"), { recursive: true });
@@ -70,7 +70,7 @@ test("Go extraction: funcs, methods, structs, interfaces, type aliases", async (
     const result = await buildGraph(dir); // $0, Tier-1 only
     assert.ok(result.languages.includes("go"), "languages should include go");
 
-    const graph = readGraph(wiringPath(join(dir, "graft")));
+    const graph = readGraph(wiringPath(join(dir, "symgraph")));
     assert.ok(graph, "wiring graph should be written");
 
     // functions — exported by leading-uppercase
@@ -100,7 +100,7 @@ test("Go extraction: call and import edges", async () => {
   const dir = makeFixture();
   try {
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     // same-file plain call resolves: Save() → Foo()
     const call = graph.edges.find(
@@ -133,7 +133,7 @@ test("Go extraction: call and import edges", async () => {
 
 test("Go extraction: go.mod in a subdirectory resolves intra-module imports", async () => {
   // Monorepo shape: the module lives under backend/, not the repo root.
-  const dir = mkdtempSync(join(tmpdir(), "graft-go-sub-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-go-sub-"));
   try {
     mkdirSync(join(dir, "backend", "store"), { recursive: true });
     writeFileSync(join(dir, "backend", "go.mod"), "module example.com/app\n\ngo 1.21\n");
@@ -144,7 +144,7 @@ test("Go extraction: go.mod in a subdirectory resolves intra-module imports", as
     writeFileSync(join(dir, "backend", "store", "store.go"), "package store\n\nfunc New() int { return 0 }\n");
 
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     // `example.com/app/store` → backend/store (module dir `backend` + subpath `store`)
     const internal = graph.edges.find(
@@ -172,7 +172,7 @@ test("A5: a go.mod under a persisted --include-dir override is found, so imports
   // persisted include-dir override source-files.ts already reads, or a
   // go.mod living under an included dir is missed while its .go files (which
   // DO go through source-files.ts) are indexed just fine.
-  const dir = mkdtempSync(join(tmpdir(), "graft-go-include-dir-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-go-include-dir-"));
   try {
     mkdirSync(join(dir, "build", "store"), { recursive: true });
     writeFileSync(join(dir, "build", "go.mod"), "module example.com/app\n\ngo 1.21\n");
@@ -184,7 +184,7 @@ test("A5: a go.mod under a persisted --include-dir override is found, so imports
     writeBuildConfig(dir, { includeDirs: ["build"] });
 
     await buildGraph(dir);
-    const graph = readGraph(wiringPath(join(dir, "graft")))!;
+    const graph = readGraph(wiringPath(join(dir, "symgraph")))!;
 
     // Sanity: the .go files under build/ are indexed at all (source-files.ts
     // already reads the persisted include list correctly).

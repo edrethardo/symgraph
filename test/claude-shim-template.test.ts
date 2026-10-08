@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { statuslineShim, hooksShim } from '../src/claude/shim-template.js';
 
-const BAKED = '/opt/graft/dist/claude';
+const BAKED = '/opt/symgraph/dist/claude';
 
 for (const [name, src] of [['statusline', statuslineShim(BAKED)], ['hooks', hooksShim(BAKED)]] as const) {
   test(`${name} shim parses and knows all four candidates (baked, node_modules, lib, npm root -g)`, () => {
@@ -13,7 +13,7 @@ for (const [name, src] of [['statusline', statuslineShim(BAKED)], ['hooks', hook
     // 1. baked dir is present as the first candidate
     assert.match(src, new RegExp(`const BAKED = "${BAKED}"`));
     // 2. repo node_modules via require.resolve from the project dir
-    assert.match(src, /require\.resolve\('@nanonets\/graft\/package\.json', \{ paths: \[base\] \}\)/);
+    assert.match(src, /require\.resolve\('symgraph\/package\.json', \{ paths: \[base\] \}\)/);
     assert.match(src, /fromPkg\(dir\)/);
     // 3. legacy execPath/../lib guess retained
     assert.match(src, /path\.join\(path\.dirname\(process\.execPath\), '\.\.', 'lib'\)/);
@@ -22,7 +22,7 @@ for (const [name, src] of [['statusline', statuslineShim(BAKED)], ['hooks', hook
     assert.doesNotMatch(src, /tmpdir/); // no predictable temp cache path
 
     // Highest version wins among the candidates, not first-hit — otherwise the
-    // baked path pins the user to whatever graft wired the repo, forever.
+    // baked path pins the user to whatever symgraph wired the repo, forever.
     // Behaviour is exercised for real in claude-shim-resolve.test.ts.
     assert.match(src, /function best\(dirs, name\)/);
     assert.match(src, /'package\.json'/); // versionOf reads each candidate's version

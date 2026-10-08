@@ -1,11 +1,11 @@
 /**
  * Workspace `init` fan-out + the subdirectory root walk, end to end.
  *
- * The gap both close: with two sibling repos under one parent, `graft init
+ * The gap both close: with two sibling repos under one parent, `symgraph init
  * <parent>` wired only the parent. But an agent session opens at a REPO root and
  * reads `.claude/` from its own cwd, so every child was left with no skill, no
- * hooks and no MCP — graft was invisible exactly where the work happens. And a
- * session opened one level deeper (`<child>/src`) found no `graft/` at all.
+ * hooks and no MCP — symgraph was invisible exactly where the work happens. And a
+ * session opened one level deeper (`<child>/src`) found no `symgraph/` at all.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -53,10 +53,10 @@ test("init at a workspace parent wires every child repo, not just the parent", (
 
   for (const dir of [parent, join(parent, "assign"), join(parent, "app.nanonets")]) {
     assert.ok(existsSync(join(dir, ".claude", "settings.json")), `${dir} settings.json`);
-    assert.ok(existsSync(join(dir, ".claude", "skills", "graft", "SKILL.md")), `${dir} skill`);
-    assert.ok(existsSync(join(dir, ".claude", "helpers", "graft-hooks.cjs")), `${dir} hooks shim`);
+    assert.ok(existsSync(join(dir, ".claude", "skills", "symgraph", "SKILL.md")), `${dir} skill`);
+    assert.ok(existsSync(join(dir, ".claude", "helpers", "symgraph-hooks.cjs")), `${dir} hooks shim`);
     const mcp = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
-    assert.ok(mcp.mcpServers?.graft, `${dir} .mcp.json registers graft`);
+    assert.ok(mcp.mcpServers?.symgraph, `${dir} .mcp.json registers symgraph`);
   }
   assert.match(r.stderr, /workspace: wiring/, "must say it fanned out");
 });
@@ -96,7 +96,7 @@ test("a query from a subdirectory answers from the repo's graph one level up", (
 
   const r = cliIn(join(child, "src"), ["map"], home);
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stderr, /no graft\/ here — answering from/, "the walk must announce itself");
+  assert.match(r.stderr, /no symgraph\/ here — answering from/, "the walk must announce itself");
   assert.match(r.stdout + r.stderr, /main\.ts/, "must actually answer from the child's graph");
 });
 
@@ -106,10 +106,10 @@ test("a query from the workspace parent still federates across children", () => 
 
   const built = runCli(["build", parent], { home });
   assert.equal(built.status, 0, built.describe());
-  assert.ok(existsSync(join(parent, "graft", "workspace.json")), "parent holds the children index");
+  assert.ok(existsSync(join(parent, "symgraph", "workspace.json")), "parent holds the children index");
 
   const r = cliIn(parent, ["map"], home);
   assert.equal(r.status, 0, r.stderr);
-  assert.doesNotMatch(r.stderr, /no graft\/ here/, "the parent IS a root — no walk");
+  assert.doesNotMatch(r.stderr, /no symgraph\/ here/, "the parent IS a root — no walk");
   assert.match(r.stdout, /assign\//, "federated output labels each child");
 });

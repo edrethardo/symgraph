@@ -4,7 +4,7 @@
  * Python spells construction as an ordinary call — `Widget()`, with no `new` to
  * mark it — so a constructor edge reaches the resolver indistinguishable from a
  * function call. Resolved against the function-only index it vanishes, and
- * `graft callers <SomeClass>` reports "no indexed callers" on a class every file
+ * `symgraph callers <SomeClass>` reports "no indexed callers" on a class every file
  * in the repo instantiates. That is the same failure `graph-java.test.ts` pins
  * for `new Foo()`, in the language where it is invisible.
  *
@@ -89,7 +89,7 @@ def make():
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-python-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-python-"));
   mkdirSync(join(dir, "pkg"), { recursive: true });
   writeFileSync(join(dir, "pkg", "__init__.py"), "");
   writeFileSync(join(dir, "pkg", "thing.py"), THING);
@@ -105,7 +105,7 @@ function makeFixture(): string {
 
 async function buildFixture(dir: string): Promise<GraphV1> {
   await buildGraph(dir); // $0, Tier-1 only
-  const graph = readGraph(wiringPath(join(dir, "graft")));
+  const graph = readGraph(wiringPath(join(dir, "symgraph")));
   assert.ok(graph, "wiring graph should be written");
   return graph!;
 }

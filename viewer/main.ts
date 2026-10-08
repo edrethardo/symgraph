@@ -1,5 +1,5 @@
 /**
- * graft viz — viewer entry point. Wires tabs, chips, legend, search, theme,
+ * symgraph viz — viewer entry point. Wires tabs, chips, legend, search, theme,
  * SSE live reload, and the three views (Context graph / Code graph / Outline).
  */
 import { loadContextGraph, loadCodeGraph, onServerChange, chipKey, CHIP_HINT, colorToken, cvar, famOf, type VizGraph } from "./data.js";
@@ -163,7 +163,7 @@ function setTab(tab: Tab): void {
     else {
       $("outlineView").hidden = true;
       $("canvasWrap").hidden = false;
-      showEmpty("No code graph yet — run <code>graft graph</code> to generate <span class=\"mono\">graph.json</span>.");
+      showEmpty("No code graph yet — run <code>symgraph graph</code> to generate <span class=\"mono\">graph.json</span>.");
     }
   } else {
     const graph = activeGraph();
@@ -175,8 +175,8 @@ function setTab(tab: Tab): void {
       // whoever opened the pull request — it reaches a published page, so it is
       // escaped rather than trusted.
       showEmpty(graph?.meta.emptyNote ? escapeText(graph.meta.emptyNote) : (tab === "code"
-        ? "No code graph yet — run <code>graft graph</code> to generate <span class=\"mono\">graph.json</span>."
-        : "No context graph — run <code>graft init</code> first."));
+        ? "No code graph yet — run <code>symgraph graph</code> to generate <span class=\"mono\">graph.json</span>."
+        : "No context graph — run <code>symgraph init</code> first."));
     } else {
       empty.hidden = true;
       view.resetView();
@@ -223,7 +223,7 @@ $("zout").addEventListener("click", () => view.zoomBy(1 / 1.25));
 $("zreset").addEventListener("click", () => view.resetView());
 
 /* ---------- theme ---------- */
-const THEME_KEY = "graft-viz-theme";
+const THEME_KEY = "symgraph-viz-theme";
 const savedTheme = localStorage.getItem(THEME_KEY);
 if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
 $("themeBtn").addEventListener("click", () => {
@@ -241,7 +241,7 @@ $("themeBtn").addEventListener("click", () => {
 });
 
 /* ---------- resizable detail panel ---------- */
-const DETAIL_W_KEY = "graft-viz-detail-w";
+const DETAIL_W_KEY = "symgraph-viz-detail-w";
 const MIN_DETAIL = 220;
 const rootEl = document.documentElement;
 const clampDetail = (px: number): number =>
@@ -292,12 +292,12 @@ async function loadAll(): Promise<void> {
   const [context, code] = await Promise.all([loadContextGraph(), loadCodeGraph()]);
   state.context = context;
   state.code = code;
-  // The subtitle only exists on an exported page (`graft viz --export --title`),
+  // The subtitle only exists on an exported page (`symgraph viz --export --title`),
   // where the same file is published per pull request and the reader needs to know
   // WHICH one they opened.
   const where = [context.meta.repoName, context.meta.subtitle].filter(Boolean).join(" · ");
   $("repoName").textContent = where;
-  document.title = `graft viz — ${where}`;
+  document.title = `symgraph viz — ${where}`;
   // A blast export ships one tab: its Code tab would be the repo's whole wiring
   // graph, which answers nothing about the pull request the page is about.
   const tabs = context.meta.tabs;

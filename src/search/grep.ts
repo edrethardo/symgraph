@@ -1,5 +1,5 @@
 /**
- * `graft grep` core: regex search over the graph's indexed files, with hits
+ * `symgraph grep` core: regex search over the graph's indexed files, with hits
  * grouped by their innermost enclosing symbol and ranked by incoming-edge
  * count (coupling) — a grep that answers "which of these hits matters",
  * because plain `grep -rn` gives no way to tell a hit inside a
@@ -7,7 +7,7 @@
  *
  * Pure I/O + regex, no CLI/MCP concerns: `grep-cli.ts` formats this into
  * human text and wires the CLI command; `mcp/tools.ts` renders the same
- * shape for the `graft_find_all` tool.
+ * shape for the `symgraph_find_all` tool.
  */
 import { join } from "node:path";
 import type { GraphV1, NodeV1 } from "../graph/types.js";

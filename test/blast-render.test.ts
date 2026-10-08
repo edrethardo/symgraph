@@ -3,7 +3,7 @@
  *
  * Two bugs live in this file's history. The first `mermaidDiagram` capped the
  * changed-file boxes in diff order and then drew only the arrows whose source box
- * happened to survive: on graft's own 23-file PR that left five of six modules with
+ * happened to survive: on symgraph's own 23-file PR that left five of six modules with
  * no arrow, so the picture said "nothing depends on any of this" — the opposite of
  * the report underneath it. The second let test-only modules into the same list as
  * real ones, and a repo with a test per module then reported 31 impacted modules,
@@ -145,7 +145,7 @@ test("blast markdown: test-only dependents are counted, never mixed into the are
 });
 
 test("markdown: the collapsed list quotes the line that reaches the diff", () => {
-  const root = mkdtempSync(join(tmpdir(), "graft-render-"));
+  const root = mkdtempSync(join(tmpdir(), "symgraph-render-"));
   mkdirSync(join(root, "core"), { recursive: true });
   // `mod("core/")` puts its symbols in core/dep.ts at L1-L3, and line 1 is what
   // makes this file part of the radius at all.

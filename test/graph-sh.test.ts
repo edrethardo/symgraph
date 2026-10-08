@@ -52,7 +52,7 @@ const TOOLS_SH = `helper() {
 `;
 
 function makeFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "graft-sh-"));
+  const dir = mkdtempSync(join(tmpdir(), "symgraph-sh-"));
   writeFileSync(join(dir, "deploy.sh"), DEPLOY_SH);
   writeFileSync(join(dir, "lib.sh"), LIB_SH);
   writeFileSync(join(dir, "ci.sh"), CI_SH);
@@ -67,7 +67,7 @@ test("shell extraction: functions, conservative call edges, no source imports", 
   // an all-shell repo is fully covered — nothing skipped
   assert.deepEqual(result.skipped, []);
 
-  const graph: GraphV1 | null = readGraph(wiringPath(join(dir, "graft")));
+  const graph: GraphV1 | null = readGraph(wiringPath(join(dir, "symgraph")));
   assert.ok(graph, "wiring graph should be written");
 
   // both definition syntaxes

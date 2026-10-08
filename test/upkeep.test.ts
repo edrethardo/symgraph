@@ -49,7 +49,7 @@ test('formatUpdateNudge stays silent unless there is something to say', () => {
   const line = formatUpdateNudge('0.9.1', '0.11.0');
   assert.ok(line);
   assert.match(line, /0\.9\.1 → 0\.11\.0/);
-  assert.match(line, /npm i -g @nanonets\/graft@latest/);
+  assert.match(line, /npm i -g symgraph@latest/);
   assert.equal(line.split('\n').length, 1, 'one line — this rides in an agent context window');
 });
 
@@ -64,7 +64,7 @@ test('needsRefresh treats a missing or malformed cache as stale', () => {
 
 test('the update cache is machine-global, not per-repo', () => {
   // One dev with twelve repos should cost the registry one request a day.
-  assert.equal(updateCachePath('/home/dev'), join('/home/dev', '.graft', 'update-check.json'));
+  assert.equal(updateCachePath('/home/dev'), join('/home/dev', '.symgraph', 'update-check.json'));
 });
 
 test('runningVersion resolves this package, not the caller depth', () => {
@@ -72,11 +72,11 @@ test('runningVersion resolves this package, not the caller depth', () => {
   assert.equal(runningVersion(), pkg.version);
 });
 
-test('the stamp round-trips under graft/.cache/', () => {
+test('the stamp round-trips under symgraph/.cache/', () => {
   const repo = tmpRepo('upkeep-stamp');
   assert.equal(readStamp(repo), null);
   writeStamp(repo, '1.2.3', ['cursor', 'claude'], {}, '2026-01-01T00:00:00.000Z');
-  assert.equal(stampPath(repo), join(repo, 'graft', '.cache', 'wiring-stamp.json'));
+  assert.equal(stampPath(repo), join(repo, 'symgraph', '.cache', 'wiring-stamp.json'));
   assert.deepEqual(readStamp(repo), {
     version: '1.2.3',
     hosts: ['claude', 'cursor'], // sorted, so two inits in different picker order match
@@ -85,7 +85,7 @@ test('the stamp round-trips under graft/.cache/', () => {
   });
 });
 
-test('wiringOpts defaults an older stamp to what plain `graft init` does', () => {
+test('wiringOpts defaults an older stamp to what plain `symgraph init` does', () => {
   assert.deepEqual(wiringOpts(null), DEFAULT_WIRING_OPTS);
   // A stamp written before flags were recorded: assume the full wiring.
   assert.deepEqual(wiringOpts({ version: '1.0.0', hosts: ['claude'], at: 'x' }), DEFAULT_WIRING_OPTS);
@@ -123,7 +123,7 @@ test('a refresh replays --no-statusline so a later session cannot re-install the
 });
 
 test('by default a refresh DOES reach ~/.codex — nothing else ever would', () => {
-  // No skill, rule file, or MCP instruction tells an agent to run `graft init`,
+  // No skill, rule file, or MCP instruction tells an agent to run `symgraph init`,
   // so skipping the out-of-repo writes means a Codex user never gets them.
   const repo = tmpRepo('upkeep-global');
   writeStamp(repo, '1.0.0', ['agents']);
@@ -141,18 +141,18 @@ test('wiredHostIds reads what init actually wrote, not what the machine has', ()
   assert.deepEqual(wiredHostIds(repo), [], 'unwired repo');
 
   mkdirSync(join(repo, '.claude', 'helpers'), { recursive: true });
-  writeFileSync(join(repo, '.claude', 'helpers', 'graft-hooks.cjs'), '// shim');
+  writeFileSync(join(repo, '.claude', 'helpers', 'symgraph-hooks.cjs'), '// shim');
   mkdirSync(join(repo, '.cursor', 'rules'), { recursive: true });
-  writeFileSync(join(repo, '.cursor', 'rules', 'graft.mdc'), 'rule');
-  // A shared file graft does NOT own: present, but no fenced graft section.
+  writeFileSync(join(repo, '.cursor', 'rules', 'symgraph.mdc'), 'rule');
+  // A shared file symgraph does NOT own: present, but no fenced symgraph section.
   writeFileSync(join(repo, 'AGENTS.md'), '# my own notes\n');
 
   const ids = wiredHostIds(repo);
   assert.ok(ids.includes('claude'));
   assert.ok(ids.includes('cursor'));
-  assert.ok(!ids.includes('agents'), "a user's own AGENTS.md is not graft wiring");
+  assert.ok(!ids.includes('agents'), "a user's own AGENTS.md is not symgraph wiring");
 
-  writeFileSync(join(repo, 'AGENTS.md'), '# my own notes\n\n<!-- graft:start -->\nx\n<!-- graft:end -->\n');
+  writeFileSync(join(repo, 'AGENTS.md'), '# my own notes\n\n<!-- symgraph:start -->\nx\n<!-- symgraph:end -->\n');
   assert.ok(wiredHostIds(repo).includes('agents'), 'the fenced section makes it ours');
 });
 
@@ -162,7 +162,7 @@ test('reconcileWiring rewrites once on a version mismatch, then no-ops', () => {
   const rewrite = (_r: string, hosts: string[]) => { calls.push(hosts); };
   const wired = () => ['claude', 'cursor'];
 
-  // No stamp (fresh clone, or wired by a pre-stamp graft) → refresh.
+  // No stamp (fresh clone, or wired by a pre-stamp symgraph) → refresh.
   const first = reconcileWiring(repo, '2.0.0', { wired, rewrite });
   assert.deepEqual(first, { from: 'unwired', to: '2.0.0', hosts: ['claude', 'cursor'], global: true });
   assert.deepEqual(calls, [['claude', 'cursor']]);
@@ -185,7 +185,7 @@ test('reconcileWiring restores a host whose file went missing', () => {
   writeStamp(repo, '1.0.0', ['claude', 'cursor']);
   const calls: string[][] = [];
   const r = reconcileWiring(repo, '2.0.0', {
-    wired: () => ['claude'], // cursor's graft.mdc is no longer on disk
+    wired: () => ['claude'], // cursor's symgraph.mdc is no longer on disk
     rewrite: (_repo, hosts) => { calls.push(hosts); },
   });
   assert.deepEqual(r?.hosts, ['claude', 'cursor']);
@@ -200,7 +200,7 @@ test('reconcileWiring adopts a host added since the stamp was written', () => {
   assert.deepEqual(r?.hosts, ['claude', 'windsurf']);
 });
 
-test('reconcileWiring leaves a repo that graft never wired alone', () => {
+test('reconcileWiring leaves a repo that symgraph never wired alone', () => {
   const repo = tmpRepo('upkeep-unwired');
   let rewrote = false;
   const r = reconcileWiring(repo, '2.0.0', { wired: () => [], rewrite: () => { rewrote = true; } });

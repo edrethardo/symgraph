@@ -1,9 +1,9 @@
 /**
  * `seedGraph` — give a linked git worktree the graph its parent checkout already has.
  *
- * `graft/` is a local cache, so it is gitignored, so `git worktree add` never checks
+ * `symgraph/` is a local cache, so it is gitignored, so `git worktree add` never checks
  * it out: a worktree starts with `src/` and `.claude/` and no graph at all. Every
- * MCP tool then answers "no graph found — run graft build first" for the whole
+ * MCP tool then answers "no graph found — run symgraph build first" for the whole
  * session, and the passive surface (`INDEX.md`, the cards) is missing too. The agent
  * that was supposed to be cheapest in a fresh worktree is instead blind in one.
  *
@@ -13,7 +13,7 @@
  * The parent checkout has not gone anywhere, though — a worktree's `.git` is a *file*
  * naming it, and the harness that creates these worktrees already reaches back the
  * same way (Claude Code symlinks `node_modules` to the parent's). So: copy the
- * parent's `graft/` in, then let the ordinary refresh gate repair the difference.
+ * parent's `symgraph/` in, then let the ordinary refresh gate repair the difference.
  *
  * Copy, not symlink. `node_modules` is the same for every branch; a graph is a set of
  * `file:line` spans for one specific tree, so a shared one would have the worktree
@@ -31,7 +31,7 @@
  *
  * Never writes to the parent, never throws, and no-ops unless there is genuinely a
  * built parent checkout on disk — so a fresh clone, CI, or a cloud session whose repo
- * was *cloned* rather than worktree'd behaves exactly as it did before: "run graft
+ * was *cloned* rather than worktree'd behaves exactly as it did before: "run symgraph
  * build first".
  */
 import {
@@ -54,9 +54,9 @@ import { GRAPH_DIR, wiringPath } from "./write.js";
 /** The one line a linked worktree's `.git` file carries. */
 const GITDIR_KEY = "gitdir:";
 
-/** Env kill switch, mirroring `GRAFT_NO_REFRESH` in ./refresh.ts. */
+/** Env kill switch, mirroring `SYMGRAPH_NO_REFRESH` in ./refresh.ts. */
 export function seedDisabled(): boolean {
-  const v = process.env.GRAFT_NO_SEED;
+  const v = process.env.SYMGRAPH_NO_SEED;
   return v !== undefined && v !== "" && v !== "0" && v !== "false";
 }
 
@@ -72,7 +72,7 @@ export function seedDisabled(): boolean {
  *   that dir points back at the shared `.git` (`../..`), whose parent is the main
  *   checkout.
  * - `gitdir: <super>/.git/modules/<name>` → a **submodule**. Identical file shape,
- *   completely different thing: a submodule is its own repo and its parent's `graft/`
+ *   completely different thing: a submodule is its own repo and its parent's `symgraph/`
  *   describes different code entirely. The `worktrees` path segment is what rejects it.
  * - A bare repo or `--separate-git-dir` layout, where the resolved common dir isn't
  *   named `.git` and there may be no working tree at all → null.
@@ -128,7 +128,7 @@ const NOT_SEEDED: SeedResult = { seeded: false };
  * **Deliberately absent: the cards and `INDEX.md`.** They would land as this
  * checkout's documentation while describing the *parent's* branch, and nothing on the
  * query path rewrites them (`writeCards`/`writeIndex` sit behind `!graphOnly`), so they
- * would stay wrong indefinitely. An explicit `graft build` regenerates them from this
+ * would stay wrong indefinitely. An explicit `symgraph build` regenerates them from this
  * checkout's own graph — and prunes the ones that no longer apply — which is both
  * correct and nearly free once the graph is here.
  *
@@ -200,7 +200,7 @@ function installGraph(srcGraph: string, destGraph: string): void {
 }
 
 /**
- * Copy the parent checkout's graph into `root`'s own `graft/`, if all of this holds:
+ * Copy the parent checkout's graph into `root`'s own `symgraph/`, if all of this holds:
  * `root` is a linked worktree, it has no graph yet, the parent has one, and no `--dir`
  * override is in play (a custom output dir can't be mapped to a sibling checkout —
  * the same conservatism `ensureGitignored` applies).

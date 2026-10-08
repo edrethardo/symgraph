@@ -1,5 +1,5 @@
 /**
- * `graft ask "<task>"` — the ACTIVE channel.
+ * `symgraph ask "<task>"` — the ACTIVE channel.
  *
  * One tool that routes a plain-words query to the right graph and returns a lean,
  * ranked context pack (prose + exact `file:line` + related), never raw JSON and
@@ -17,7 +17,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import matter from "gray-matter";
 import { contextDirFor } from "../context/node-file.js";
-import { withGraftLine, coverageFor, graftLine, type Coverage } from "../context/savings.js";
+import { withSymgraphLine, coverageFor, symgraphLine, type Coverage } from "../context/savings.js";
 import { unsupportedFileNote } from "../graph/coverage.js";
 import { loadGraphCached, loadAskIndexCached } from "../graph/load.js";
 import {
@@ -343,7 +343,7 @@ type StructuralOutcome = { result: AskResult } | { fallthroughNote: string } | n
 function fallthroughNoteFor(subject: string): string {
   return (
     `structural index: no entries for '${subject}' — showing lexical matches; ` +
-    `for precise edges try graft callers '${subject}', or graft grep '${subject}' for every reference (loosen the pattern if it returns nothing)`
+    `for precise edges try symgraph callers '${subject}', or symgraph grep '${subject}' for every reference (loosen the pattern if it returns nothing)`
   );
 }
 
@@ -380,7 +380,7 @@ function structural(query: string, graph: GraphV1, limit: number, inPrefix?: str
   }
 
   // Subject resolved but the graph has no indexed edges for it — same "loud,
-  // never a bare empty" contract as `graft callers`/`callees` — fall through
+  // never a bare empty" contract as `symgraph callers`/`callees` — fall through
   // to lexical rather than returning a structural result with zero hits.
   if (hits.length === 0) return { fallthroughNote: fallthroughNoteFor(subjects[0].name) };
 
@@ -1192,7 +1192,7 @@ function lexical(
     // so a query that missed everywhere still tells the caller where to look.
     note: scored.length
       ? undefined
-      : `no matching nodes — try different words, or \`graft build\` if graft/ is empty${scopesHereClause(scopes ?? [])}`,
+      : `no matching nodes — try different words, or \`symgraph build\` if symgraph/ is empty${scopesHereClause(scopes ?? [])}`,
   };
 }
 
@@ -1306,7 +1306,7 @@ function baselineFor(hits: AskHit[], graph: GraphV1 | null): AskResult["saved"] 
   return coverageFor(graph, hitFiles(hits));
 }
 
-/** Answer a query from the graft/ graph at `dir`. Deterministic, $0. */
+/** Answer a query from the symgraph/ graph at `dir`. Deterministic, $0. */
 export function ask(dir: string, query: string, opts: AskOptions = {}): AskResult {
   const root = resolve(dir);
   const outDir = contextDirFor(root, opts.contextDir);
@@ -1413,7 +1413,7 @@ export interface SkeletonResult {
 export function skeleton(dir: string, file: string, opts: { contextDir?: string } = {}): SkeletonResult {
   const outDir = contextDirFor(resolve(dir), opts.contextDir);
   const graph = loadGraphCached(outDir);
-  if (!graph) return { file, entries: [], note: "no wiring graph — run `graft build` first" };
+  if (!graph) return { file, entries: [], note: "no wiring graph — run `symgraph build` first" };
 
   let defs = graph.nodes.filter((n) => n.kind !== "file" && n.path === file);
   if (!defs.length) {
@@ -1449,7 +1449,7 @@ export function skeleton(dir: string, file: string, opts: { contextDir?: string 
 
 /** Render a {@link SkeletonResult} as compact markdown. */
 export function formatSkeleton(r: SkeletonResult): string {
-  const head = `graft skeleton — ${r.file}`;
+  const head = `symgraph skeleton — ${r.file}`;
   if (!r.entries.length) return `${head}\n\n${r.note ?? "no definitions."}\n`;
   const lines = r.entries.map((e) => {
     const sig = e.signature ? `  ${e.signature}` : "";
@@ -1457,7 +1457,7 @@ export function formatSkeleton(r: SkeletonResult): string {
     return `- ${e.span}  ${e.kind} ${e.name}${sig}${sum}`;
   });
   const body = `${head}\n${lines.join("\n")}`;
-  return withGraftLine(body, r.saved) + "\n";
+  return withSymgraphLine(body, r.saved) + "\n";
 }
 
 /** Rough tokens for a byte length (≈ 4 chars/token; good enough for an estimate). */
@@ -1467,7 +1467,7 @@ function toTokens(chars: number): number {
 
 /** Render an {@link AskResult} as a compact markdown context pack. */
 export function formatAsk(r: AskResult): string {
-  const head = `graft ask — "${r.query}"  (${r.mode})`;
+  const head = `symgraph ask — "${r.query}"  (${r.mode})`;
   // The note prints as its own prominent line(s) right under the header —
   // above every hit — so a loud structural-fallthrough note (or the
   // no-structural-edges / no-lexical-match note) can never be missed by only
@@ -1507,7 +1507,7 @@ export function formatAsk(r: AskResult): string {
     lines.push(...scopeFooterLines(r));
   }
   const body = lines.join("\n").trimEnd();
-  return `${askGraftLine(r)}\n\n${body}` + escalationNudge(r) + "\n";
+  return `${askSymgraphLine(r)}\n\n${body}` + escalationNudge(r) + "\n";
 }
 
 /** When a lexical `ask` returns thin/no results, the productive next move is a
@@ -1519,17 +1519,17 @@ function escalationNudge(r: AskResult): string {
   if ((r.mode !== "lexical" && r.mode !== "empty") || r.hits.length > 3) return "";
   const n = r.hits.length;
   return (
-    `\n\n[graft] ${n === 0 ? "no hits" : `only ${n} hit${n === 1 ? "" : "s"}`} — don't re-ask with new wording; switch tool: ` +
-    "`graft grep \"<literal>\"` for every occurrence · `graft skeleton <file>` for a file's full API · `graft callers <symbol>` for who-uses."
+    `\n\n[symgraph] ${n === 0 ? "no hits" : `only ${n} hit${n === 1 ? "" : "s"}`} — don't re-ask with new wording; switch tool: ` +
+    "`symgraph grep \"<literal>\"` for every occurrence · `symgraph skeleton <file>` for a file's full API · `symgraph callers <symbol>` for who-uses."
   );
 }
 
 /** The one-line marker `ask` prepends, so the reader can see the answer came
  * from the index and over how many files. Header, not footer, for the reason
- * documented on `withGraftLine`: a trailing line dies to `head -N` and to host
+ * documented on `withSymgraphLine`: a trailing line dies to `head -N` and to host
  * output truncation. No savings estimate — see `context/savings.ts`. */
-function askGraftLine(r: AskResult): string {
-  return graftLine(r.saved);
+function askSymgraphLine(r: AskResult): string {
+  return symgraphLine(r.saved);
 }
 
 /** Multi-scope footer: answers a reviewer's two questions — "which

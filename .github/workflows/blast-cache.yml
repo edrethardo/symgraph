@@ -10,7 +10,7 @@ name: Blast cache
 on:
   push:
     branches: [main]
-  # graft/ holds the LLM-written area names, keyed by content hash; a manual run is
+  # symgraph/ holds the LLM-written area names, keyed by content hash; a manual run is
   # the way to refill the cache after the 7-day eviction window on a quiet repo.
   workflow_dispatch:
 
@@ -43,9 +43,9 @@ jobs:
 
       - name: Build the graph, the concept layer, and name every area
         env:
-          GRAFT_API_KEY: ${{ secrets.GRAFT_API_KEY }}
-          GRAFT_BASE_URL: ${{ secrets.GRAFT_BASE_URL }}
-          GRAFT_MODEL: ${{ secrets.GRAFT_MODEL }}
+          SYMGRAPH_API_KEY: ${{ secrets.SYMGRAPH_API_KEY }}
+          SYMGRAPH_BASE_URL: ${{ secrets.SYMGRAPH_BASE_URL }}
+          SYMGRAPH_MODEL: ${{ secrets.SYMGRAPH_MODEL }}
         run: |
           set -euo pipefail
           node dist/cli.js build .
@@ -59,5 +59,5 @@ jobs:
 
       - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
-          path: graft
-          key: graft-${{ github.sha }}
+          path: symgraph
+          key: symgraph-${{ github.sha }}

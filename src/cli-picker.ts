@@ -1,5 +1,5 @@
 /**
- * `graft init`'s agent picker and `--dry-run` plan printer.
+ * `symgraph init`'s agent picker and `--dry-run` plan printer.
  *
  * Split three ways so the logic is testable without a TTY: `renderPicker` and
  * `reducePicker` are pure, `runPicker` is the only part that touches stdin.
@@ -167,7 +167,7 @@ export function renderPicker(state: PickerState, tty = true): string {
   // rows carry the '(not detected)' tag or the cursor's colour codes.
   const label = (r: PickerRow) => `${r.id}${r.detected ? '' : ' (not detected)'}`;
   const width = Math.max(...state.rows.map((r) => label(r).length));
-  const lines = ['graft init — select what to wire into this repo:', ''];
+  const lines = ['symgraph init — select what to wire into this repo:', ''];
   for (const [i, row] of state.rows.entries()) {
     const here = i === state.cursor;
     const box = state.checked.has(row.id) ? '[x]' : '[ ]';
@@ -255,16 +255,16 @@ export function formatNonInteractiveHelp(detectedIds: string[]): string {
   const examples: [string, string][] = [
     ...(detectedIds.length > 0
       ? ([
-          [`graft init --agents ${detectedIds.join(" ")}`, "wire these"],
-          ["graft init --yes", "same, without spelling them out"],
+          [`symgraph init --agents ${detectedIds.join(" ")}`, "wire these"],
+          ["symgraph init --yes", "same, without spelling them out"],
         ] as [string, string][])
       : []),
-    ["graft init --agents claude", "Claude Code only"],
-    ["graft init --dry-run", "list every file first"],
+    ["symgraph init --agents claude", "Claude Code only"],
+    ["symgraph init --dry-run", "list every file first"],
   ];
   const width = Math.max(...examples.map(([cmd]) => cmd.length));
   return [
-    "graft init: no TTY to prompt on, and no --agents/--yes given — nothing written.",
+    "symgraph init: no TTY to prompt on, and no --agents/--yes given — nothing written.",
     `detected: ${list}`,
     "",
     ...examples.map(([cmd, note]) => `  ${cmd.padEnd(width)}   # ${note}`),

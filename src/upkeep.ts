@@ -1,14 +1,14 @@
 /**
- * Self-maintenance: keeping an installed graft, and the wiring it wrote, current.
+ * Self-maintenance: keeping an installed symgraph, and the wiring it wrote, current.
  *
  * Two independent kinds of staleness, both invisible to the user today:
  *
- *   1. **Binary staleness** — they installed once and never upgraded. `graft
+ *   1. **Binary staleness** — they installed once and never upgraded. `symgraph
  *      version` would tell them, but nobody runs it. So we keep a cached,
  *      machine-global registry answer and let every entry point surface a
  *      one-line nudge from it.
  *
- *   2. **Wiring staleness** — `graft init` copies hooks, shims, skill text and
+ *   2. **Wiring staleness** — `symgraph init` copies hooks, shims, skill text and
  *      rule files INTO the repo. `npm i -g` replaces the binary but touches none
  *      of them, so a repo wired by 0.7 keeps 0.7's prompts and 0.7's hook
  *      timeouts forever (see the comment on `promptAskTimeout`, which exists
@@ -32,10 +32,10 @@ import { readJson, writeJsonAtomic, cacheDir } from './util/state.js';
 import { HOSTS } from './hosts/registry.js';
 import { START } from './hosts/sections.js';
 import { getNpmViewVersion, readCurrentVersion } from './cli-meta.js';
-import { graftCliPath } from './claude/paths.js';
+import { symgraphCliPath } from './claude/paths.js';
 
 /**
- * The version of the graft package this code was loaded from.
+ * The version of the symgraph package this code was loaded from.
  *
  * Resolved from *this* module rather than the caller's: `readCurrentVersion`
  * looks one level up from the module URL it's given, which lands on the package
@@ -48,7 +48,7 @@ export function runningVersion(): string {
   try { return readCurrentVersion(import.meta.url); } catch { return '0.0.0'; }
 }
 
-/** How long a registry answer is considered current. A day: graft ships far less
+/** How long a registry answer is considered current. A day: symgraph ships far less
  * often than that, and this is a nudge, not a security update. */
 export const UPDATE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -88,10 +88,10 @@ export interface UpdateCache {
   checkedAt: number;
 }
 
-/** Machine-global, not per-repo: "what's the latest graft" is one fact, and a
+/** Machine-global, not per-repo: "what's the latest symgraph" is one fact, and a
  * dev with twelve repos should cost the registry one request a day, not twelve. */
 export function updateCachePath(home: string = homedir()): string {
-  return join(home, '.graft', 'update-check.json');
+  return join(home, '.symgraph', 'update-check.json');
 }
 
 export function readUpdateCache(home?: string): UpdateCache | null {
@@ -103,7 +103,7 @@ function writeUpdateCache(cache: UpdateCache, home?: string): void {
 }
 
 /**
- * The `graft _update-check` command body: hit the registry, store the answer.
+ * The `symgraph _update-check` command body: hit the registry, store the answer.
  * Runs in a detached child so nothing user-facing ever waits on the network.
  */
 export function refreshUpdateCache(home?: string, now = Date.now()): UpdateCache {
@@ -131,7 +131,7 @@ export function maybeRefreshInBackground(home?: string, now = Date.now()): boole
   if (!needsRefresh(cache, now)) return false;
   writeUpdateCache({ latest: cache?.latest ?? null, checkedAt: now }, home);
   try {
-    const child = spawn(process.execPath, [graftCliPath(), '_update-check'], {
+    const child = spawn(process.execPath, [symgraphCliPath(), '_update-check'], {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
@@ -147,7 +147,7 @@ export function maybeRefreshInBackground(home?: string, now = Date.now()): boole
  * "you're up to date". */
 export function formatUpdateNudge(current: string, latest: string | null | undefined): string | null {
   if (!isNewer(latest, current)) return null;
-  return `⬆ graft ${current} → ${latest} available: run \`npm i -g @nanonets/graft@latest\` (restart your agent after).`;
+  return `⬆ symgraph ${current} → ${latest} available: run \`npm i -g symgraph@latest\` (restart your agent after).`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -155,14 +155,14 @@ export function formatUpdateNudge(current: string, latest: string | null | undef
 /* -------------------------------------------------------------------------- */
 
 /**
- * The subset of `graft init`'s flags a refresh has to replay.
+ * The subset of `symgraph init`'s flags a refresh has to replay.
  *
  * Without these, an auto-refresh would install things the user explicitly
- * declined: someone who ran `graft init --no-global` (or `--no-hooks`, or
+ * declined: someone who ran `symgraph init --no-global` (or `--no-hooks`, or
  * `--no-statusline`) said "keep out of `~/.codex`" / "leave my statusline
- * alone", and a later session silently writing there would be graft overriding a
+ * alone", and a later session silently writing there would be symgraph overriding a
  * decision rather than maintaining one. Absent from an older stamp → all true,
- * which is what plain `graft init` does.
+ * which is what plain `symgraph init` does.
  */
 export interface WiringOpts {
   /** false → never write outside the repo (`--no-global`). */
@@ -171,19 +171,19 @@ export interface WiringOpts {
   mcp: boolean;
   /** false → skip hook installation (`--no-hooks`). */
   hooks: boolean;
-  /** false → skip Claude Code statusLine (`--no-statusline` / GRAFT_NO_STATUSLINE). */
+  /** false → skip Claude Code statusLine (`--no-statusline` / SYMGRAPH_NO_STATUSLINE). */
   statusline: boolean;
 }
 
 export const DEFAULT_WIRING_OPTS: WiringOpts = { global: true, mcp: true, hooks: true, statusline: true };
 
-/** An older stamp has no `opts`; a plain `graft init` wired everything. */
+/** An older stamp has no `opts`; a plain `symgraph init` wired everything. */
 export function wiringOpts(stamp: WiringStamp | null): WiringOpts {
   return { ...DEFAULT_WIRING_OPTS, ...(stamp?.opts ?? {}) };
 }
 
 export interface WiringStamp {
-  /** The graft version whose `init` wrote this repo's agent files. */
+  /** The symgraph version whose `init` wrote this repo's agent files. */
   version: string;
   /** Host ids that were wired, so a refresh re-writes exactly those and never
    * silently adopts an agent the user declined in the picker. */
@@ -193,7 +193,7 @@ export interface WiringStamp {
   at: string;
 }
 
-/** Under `graft/.cache/`, beside the other derived state: git-ignored, per-clone,
+/** Under `symgraph/.cache/`, beside the other derived state: git-ignored, per-clone,
  * and cheap to lose — a missing stamp just means one idempotent refresh. */
 export function stampPath(repo: string): string {
   return join(cacheDir(repo), 'wiring-stamp.json');
@@ -217,22 +217,22 @@ export function writeStamp(
       opts: { ...DEFAULT_WIRING_OPTS, ...opts },
       at,
     } satisfies WiringStamp);
-  } catch { /* unwritable graft/ — a refresh will just be retried next session */ }
+  } catch { /* unwritable symgraph/ — a refresh will just be retried next session */ }
 }
 
 /**
  * Which agents this repo is *already* wired for, read off disk rather than
  * re-detected. Detection answers "which editors does this machine have"; for a
  * refresh we need "which files did a previous init actually write" — otherwise
- * installing Windsurf once would silently add graft rules to every repo.
+ * installing Windsurf once would silently add symgraph rules to every repo.
  */
 export function wiredHostIds(repo: string): string[] {
   const ids: string[] = [];
-  if (existsSync(join(repo, '.claude', 'helpers', 'graft-hooks.cjs'))) ids.push('claude');
+  if (existsSync(join(repo, '.claude', 'helpers', 'symgraph-hooks.cjs'))) ids.push('claude');
   for (const host of HOSTS) {
     const path = join(repo, host.relPath);
     if (!existsSync(path)) continue;
-    // A shared file (AGENTS.md, GEMINI.md) counts only if graft's fenced section
+    // A shared file (AGENTS.md, GEMINI.md) counts only if symgraph's fenced section
     // is in it — the user may own the file for entirely unrelated reasons.
     if (host.kind === 'section') {
       try { if (!readFileSync(path, 'utf8').includes(START)) continue; } catch { continue; }
@@ -257,7 +257,7 @@ export interface WiringRefresh {
  * Deliberately narrow: it refreshes the hosts already wired, replays the flags
  * that init was given, never builds the graph (this runs at session start — a
  * rebuild there would stall the agent's first turn), and no-ops when the repo has
- * no graft wiring at all.
+ * no symgraph wiring at all.
  */
 export function reconcileWiring(
   repo: string,
@@ -292,5 +292,5 @@ export function formatWiringRefresh(r: WiringRefresh | null): string | null {
   // Name the out-of-repo writes explicitly: those are machine-wide and shared by
   // every repo, so a user seeing this line should not have to guess what moved.
   const scope = r.global && r.hosts.includes('agents') ? " (including this machine's ~/.codex config)" : '';
-  return `· graft refreshed this repo's agent wiring${scope} (written by ${r.from}, now ${r.to}): ${r.hosts.join(', ')}.`;
+  return `· symgraph refreshed this repo's agent wiring${scope} (written by ${r.from}, now ${r.to}): ${r.hosts.join(', ')}.`;
 }

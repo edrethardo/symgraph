@@ -10,7 +10,7 @@ import { tmpRepo } from './helpers.js';
 
 function fresh(): string { return tmpRepo('plan'); }
 
-/** A home with every CLI graft can detect installed. */
+/** A home with every CLI symgraph can detect installed. */
 function fullHome(): string {
   const home = fresh();
   for (const d of ['.codex', '.cursor', '.gemini', '.kiro', '.adal', join('.codeium', 'windsurf'), join('.config', 'opencode')]) {
@@ -53,7 +53,7 @@ test('claude writes: five in the repo, three in ~ that no .gitignore can eat', (
   const globals = claude.writes.filter((w) => w.scope === 'global');
   assert.deepEqual(
     globals.map((w) => toPosixPath(w.path.slice(home.length))).sort(),
-    ['/.claude.json', '/.claude/helpers/graft-hooks.cjs', '/.claude/settings.json'],
+    ['/.claude.json', '/.claude/helpers/symgraph-hooks.cjs', '/.claude/settings.json'],
   );
   assert.ok(globals.every((w) => !w.path.startsWith(repo)), 'nothing global lands in the repo');
 });
@@ -66,7 +66,7 @@ test('the three ~/.codex writes are scoped global', () => {
   // Real filesystem paths, so compared in posix form rather than the platform's.
   assert.deepEqual(
     globals.map((w) => toPosixPath(w.path.slice(home.length))).sort(),
-    ['/.codex/config.toml', '/.codex/hooks.json', '/.codex/hooks/graft/graft-hooks.cjs'],
+    ['/.codex/config.toml', '/.codex/hooks.json', '/.codex/hooks/symgraph/symgraph-hooks.cjs'],
   );
 });
 
@@ -89,7 +89,7 @@ test('adal is an instruction-only host — no MCP target', () => {
   const adal = planInit(fresh(), { home: fullHome(), ids: ['adal'] })[0];
   assert.equal(adal.writes.length, 1);
   assert.equal(adal.writes[0].kind, 'instruction');
-  assert.match(toPosixPath(adal.writes[0].path), /\.adal\/skills\/graft\/SKILL\.md$/);
+  assert.match(toPosixPath(adal.writes[0].path), /\.adal\/skills\/symgraph\/SKILL\.md$/);
 });
 
 // The assertion that keeps the plan honest: whatever a real run writes must be
