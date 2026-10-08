@@ -20,7 +20,8 @@ export interface EngineConfig {
 
   /** Wire format / SDK. Env: SYMGRAPH_PROVIDER. Default: `openai`. */
   provider?: ProviderKind;
-  /** API key for the chosen provider. Env: SYMGRAPH_API_KEY (legacy: OPENROUTER_API_KEY). */
+  /** API key for the chosen provider. Env: SYMGRAPH_API_KEY (legacy: OPENROUTER_API_KEY;
+   * for `anthropic` also ANTHROPIC_API_KEY). */
   apiKey?: string;
   /** Model id. Env: SYMGRAPH_MODEL. Provider-specific default. */
   model?: string;
@@ -60,7 +61,8 @@ const ORCAROUTER_BASE_URL = "https://api.orcarouter.ai/v1";
 /** Per-provider default model. */
 export const DEFAULT_MODELS: Record<ProviderKind, string> = {
   openai: "openai/gpt-4o-mini",
-  anthropic: "claude-sonnet-5",
+  // The cheap tier: `--deep` is many short, structured calls, not hard reasoning.
+  anthropic: "claude-haiku-5-5",
   // Provider-prefixed so the LiteLLM proxy routes it; override with SYMGRAPH_MODEL.
   litellm: "openai/gpt-4o-mini",
   // Provider-prefixed so the OrcaRouter gateway routes it; override with SYMGRAPH_MODEL.
@@ -79,7 +81,9 @@ export function resolveConfig(config: EngineConfig = {}): ResolvedConfig {
 
   const explicitKey = config.apiKey ?? env.SYMGRAPH_API_KEY;
   const legacyKey = env.OPENROUTER_API_KEY;
-  const apiKey = explicitKey ?? legacyKey ?? env.ORCAROUTER_API_KEY;
+  // The native provider also takes the key the Anthropic SDK itself reads.
+  const vendorKey = provider === "anthropic" ? env.ANTHROPIC_API_KEY : undefined;
+  const apiKey = explicitKey ?? legacyKey ?? vendorKey ?? env.ORCAROUTER_API_KEY;
   const usedLegacyEnv = !explicitKey && !!legacyKey;
 
   const model =

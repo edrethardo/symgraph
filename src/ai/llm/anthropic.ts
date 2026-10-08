@@ -29,6 +29,17 @@ export interface AnthropicChatModelOptions {
   label?: string;
   /** Inject a pre-built client (tests pass a stub; production omits it). */
   client?: Anthropic;
+  /** `output_config.effort`. Env: SYMGRAPH_EFFORT. Omitted → the model's default. */
+  effort?: Effort;
+}
+
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+const EFFORTS: readonly Effort[] = ["low", "medium", "high", "xhigh", "max"];
+
+/** Read SYMGRAPH_EFFORT; an unknown value is ignored rather than sent to a 400. */
+export function effortFromEnv(env: NodeJS.ProcessEnv = process.env): Effort | undefined {
+  const v = env.SYMGRAPH_EFFORT?.trim().toLowerCase();
+  return EFFORTS.includes(v as Effort) ? (v as Effort) : undefined;
 }
 
 type CacheControl = { cache_control: { type: "ephemeral" } } | Record<string, never>;
@@ -38,9 +49,11 @@ export class AnthropicChatModel implements ChatModel {
   readonly label: string;
   private client: Anthropic;
   private model: string;
+  private effort?: Effort;
 
   constructor(opts: AnthropicChatModelOptions) {
     this.model = opts.model;
+    this.effort = opts.effort ?? effortFromEnv();
     this.label = opts.label ?? `${PROVIDER}:${opts.model}`;
     this.client =
       opts.client ??
@@ -83,6 +96,8 @@ export class AnthropicChatModel implements ChatModel {
       ...(system.length ? { system } : {}),
     };
     // temperature is intentionally NOT forwarded — current models reject it.
+    // Effort is opt-in: older models (Haiku 4.5, Sonnet 4.5) reject the field.
+    if (this.effort) params.output_config = { effort: this.effort };
 
     const fmt = req.responseFormat ?? { kind: "text" };
     if (fmt.kind === "json") {

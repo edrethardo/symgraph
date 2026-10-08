@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.12.1
+
+### Added
+
+- **One provider config for every repo:** `~/.symgraph/.env` (or `$SYMGRAPH_HOME/.env`)
+  fills whatever the shell and the project's own `.env` leave unset, so a key and
+  model set once serve `symgraph build --deep` everywhere.
+- **`SYMGRAPH_EFFORT`** (`low` | `medium` | `high` | `xhigh` | `max`) is sent as
+  `output_config.effort` on the native `anthropic` provider. Opt-in, since older
+  models reject the field.
+
+### Changed
+
+- The `anthropic` provider defaults to **`claude-haiku-5-5`** (was `claude-sonnet-5`):
+  `--deep` is many short structured calls, which the cheap tier handles well.
+- The `anthropic` provider also accepts **`ANTHROPIC_API_KEY`** when
+  `SYMGRAPH_API_KEY` is unset.
+
 ## 0.12.0 (symgraph)
 
 The fork's first release under its own name. Version numbers restart from the

@@ -7,6 +7,8 @@
 import "dotenv/config";
 // After dotenv, so a GRAFT_* line in an old .env is carried over too.
 import "./util/env-compat.js";
+// Last, so the shell and the project's .env both win over ~/.symgraph/.env.
+import "./util/user-env.js";
 import { Command } from "commander";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

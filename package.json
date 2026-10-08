@@ -1,6 +1,6 @@
 {
   "name": "symgraph",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Index a repo's symbols, spans and call graph locally so coding agents can look code up instead of grepping for it.",
   "keywords": [
     "ai",
