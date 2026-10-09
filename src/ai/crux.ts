@@ -1,5 +1,6 @@
 /**
- * Tier-2 "meaning" call for the code graph — batched one request per file.
+ * Tier-2 "meaning" call for the code graph — batched per file (in chunks of
+ * MAX_TARGETS_PER_CALL targets, so a huge file cannot overrun maxTokens).
  *
  * Given a source file (with 1-based line numbers) and the list of definitions in
  * it, one call returns, for each definition:
@@ -149,6 +150,23 @@ function parseResults(obj: { symbols?: unknown } | undefined): NodeCrux[] {
     }));
 }
 
+/** Targets per request: at ~80 output tokens each, a batch stays well under maxTokens. */
+export const MAX_TARGETS_PER_CALL = 40;
+
+/**
+ * Map each returned id back onto a requested one. Models sometimes echo the whole
+ * target line (`src/a.h | file | lines L1-L37`) or keep the `id=` prefix; an exact
+ * match always wins, and an id that maps to nothing is kept as-is (the caller drops it).
+ */
+export function matchIds(parsed: NodeCrux[], nodes: NodeRef[]): NodeCrux[] {
+  const ids = new Set(nodes.map((n) => n.id));
+  return parsed.map((p) => {
+    if (ids.has(p.id)) return p;
+    const bare = p.id.split(" | ")[0].trim().replace(/^id=/, "");
+    return ids.has(bare) ? { ...p, id: bare } : p;
+  });
+}
+
 /**
  * Some OpenAI-compatible gateways ignore forced `tool_choice` and put the tool
  * payload in `content` instead (plain `{symbols:…}`, fenced JSON, or an emulated
@@ -180,6 +198,21 @@ export class ChatCruxSummarizer implements CruxSummarizer {
   async describeFile(input: FileCruxInput): Promise<NodeCrux[]> {
     this.lastMiss = null;
     if (input.nodes.length === 0) return [];
+    // A file with hundreds of targets (a big test module) overruns maxTokens in
+    // one reply and comes back truncated with nothing usable; ask in batches.
+    const out: NodeCrux[] = [];
+    let miss: CruxMiss | null = null;
+    for (let i = 0; i < input.nodes.length; i += MAX_TARGETS_PER_CALL) {
+      const nodes = input.nodes.slice(i, i + MAX_TARGETS_PER_CALL);
+      const { parsed, miss: m } = await this.describeBatch({ ...input, nodes });
+      out.push(...parsed);
+      miss ??= m;
+    }
+    this.lastMiss = out.some((p) => p.summary.trim()) ? null : miss;
+    return out;
+  }
+
+  private async describeBatch(input: FileCruxInput): Promise<{ parsed: NodeCrux[]; miss: CruxMiss | null }> {
     const res = await this.model.create({
       temperature: 0,
       maxTokens: 8192,
@@ -196,8 +229,7 @@ export class ChatCruxSummarizer implements CruxSummarizer {
         { role: "user", content: userContent(input) },
       ],
     });
-    const parsed = parseResults(argsFromResponse(res));
-    this.lastMiss = classifyCruxMiss(res, parsed);
-    return parsed;
+    const parsed = matchIds(parseResults(argsFromResponse(res)), input.nodes);
+    return { parsed, miss: classifyCruxMiss(res, parsed) };
   }
 }

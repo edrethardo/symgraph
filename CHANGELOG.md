@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.2
+
+### Fixed
+
+- **`--deep` on files with many symbols:** the per-symbol pass now asks in batches
+  of 40 targets instead of one reply per file, which overran `maxTokens` on big
+  test modules and left the whole file pending (`truncated, finish_reason=max_tokens`).
+- **Echoed target ids:** a reply id that repeats the whole target line
+  (`src/a.h | file | lines L1-L37`) or keeps the `id=` prefix is mapped back to the
+  target, instead of failing the file as `empty-parsed`.
+
 ## 0.12.1
 
 ### Added
