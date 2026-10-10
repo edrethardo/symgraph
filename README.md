@@ -1,9 +1,14 @@
 # symgraph
 
-> **Fork notice:** symgraph is a fork of [Graft](https://github.com/trailhq/Graft)
-> (MIT), by the Graft contributors at Nanonets/trailhq. It was renamed, and it
-> ships **no telemetry and no cloud upload**: upstream's Trail/brain integration,
-> usage telemetry and "tokens/dollars saved" estimates are left out on purpose.
+> **Fork notice:** symgraph was forked from [Graft](https://github.com/trailhq/Graft) by
+> [ed_rethardo](https://github.com/edrethardo).
+> Graft's original authors and contributors retain authorship and copyright for
+> their work. The original MIT license and copyright notices are preserved; see
+> [LICENSE](LICENSE) and [CREDITS.md](CREDITS.md).
+>
+> This fork ships **no telemetry and no cloud upload**: upstream's Trail/brain
+> integration, usage telemetry and "tokens/dollars saved" estimates are left out
+> on purpose.
 > It adds C/C++ and shell to the depth tier, with receiver-typed, include-closure
 > and namespace call-edge resolution for C++, and it reports unsupported languages
 > honestly instead of skipping them. Useful upstream fixes and features are picked
